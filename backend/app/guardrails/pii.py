@@ -94,6 +94,6 @@ def detect_sensitive_financial_data(text: str) -> Optional[str]:
         window_end = min(len(text), _CARD_LABELS.search(text).end() + 100)
         window = text[window_start:window_end]
         if _CARD_PATTERN.search(window):
-            return "card details detected"
+            return "card details identified"
 
     return None
