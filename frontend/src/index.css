@@ -1,0 +1,179 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-surface: #fafafa;
+  --color-surface-elevated: #ffffff;
+  --color-sidebar: #0f0f12;
+  --color-sidebar-hover: #1a1a1f;
+  --color-sidebar-active: #25252d;
+  --color-border: #e8e8ec;
+  --color-border-subtle: #f0f0f3;
+  --color-muted: #71717a;
+  --color-foreground: #18181b;
+
+  --color-accent-50: #f5f3ff;
+  --color-accent-100: #ede9fe;
+  --color-accent-200: #ddd6fe;
+  --color-accent-500: #8b5cf6;
+  --color-accent-600: #7c3aed;
+  --color-accent-700: #6d28d9;
+}
+
+.dark {
+  --color-surface: #09090b;
+  --color-surface-elevated: #18181b;
+  --color-border: #27272a;
+  --color-border-subtle: #1f1f23;
+  --color-muted: #a1a1aa;
+  --color-foreground: #fafafa;
+}
+
+body {
+  @apply bg-surface text-foreground antialiased;
+  font-family: var(--font-sans);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #52525b;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+
+.chat-markdown {
+  @apply text-[0.9375rem] leading-relaxed text-zinc-700 dark:text-zinc-300;
+}
+.chat-markdown p {
+  @apply my-2.5 first:mt-0 last:mb-0;
+}
+.chat-markdown .inline-code {
+  @apply rounded-md bg-zinc-100 px-1.5 py-0.5 font-mono text-[0.8125rem] text-violet-700 dark:bg-zinc-800 dark:text-violet-300;
+}
+.chat-markdown ul,
+.chat-markdown ol {
+  @apply my-2.5 ml-5 space-y-1;
+}
+.chat-markdown ul {
+  @apply list-disc;
+}
+.chat-markdown ol {
+  @apply list-decimal;
+}
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3 {
+  @apply mt-4 mb-2 font-semibold text-zinc-900 first:mt-0 dark:text-zinc-100;
+}
+.chat-markdown h1 { @apply text-lg; }
+.chat-markdown h2 { @apply text-base; }
+.chat-markdown h3 { @apply text-sm; }
+.chat-markdown a {
+  @apply text-violet-600 underline decoration-violet-300 underline-offset-2 hover:text-violet-700 dark:text-violet-400 dark:decoration-violet-600 dark:hover:text-violet-300;
+}
+.chat-markdown blockquote {
+  @apply my-3 border-l-2 border-violet-300 pl-4 text-zinc-600 italic dark:border-violet-600 dark:text-zinc-400;
+}
+.chat-markdown strong {
+  @apply font-semibold text-zinc-900 dark:text-zinc-100;
+}
+
+/* Syntax-highlighted code blocks */
+.code-block {
+  --code-bg: #0d1117;
+  --code-header-bg: #161b22;
+  --code-gutter-bg: #0d1117;
+  --code-gutter-color: #6e7681;
+}
+
+.code-block-scroll {
+  background: var(--code-bg);
+}
+
+.code-block-table .code-block-gutter {
+  width: 3rem;
+  min-width: 3rem;
+  padding: 1rem 0.75rem 1rem 1rem;
+  background: var(--code-gutter-bg);
+  border-right: 1px solid #21262d;
+  user-select: none;
+}
+
+.code-block-table .code-block-line {
+  padding: 0 1rem 0 0.75rem;
+  white-space: pre;
+}
+
+.code-block-table .code-block-row:first-child .code-block-gutter,
+.code-block-table .code-block-row:first-child .code-block-line {
+  padding-top: 1rem;
+}
+
+.code-block-table .code-block-row:last-child .code-block-gutter,
+.code-block-table .code-block-row:last-child .code-block-line {
+  padding-bottom: 1rem;
+}
+
+.code-block .hljs {
+  background: transparent;
+  color: #e6edf3;
+  padding: 0;
+}
+
+@keyframes typing-dot {
+  0%, 60%, 100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.typing-indicator .typing-dot {
+  display: block;
+  height: 0.5rem;
+  width: 0.5rem;
+  border-radius: 9999px;
+  background-color: #a1a1aa;
+  animation: typing-dot 1.4s ease-in-out infinite;
+}
+
+.typing-indicator .typing-dot:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.typing-indicator .typing-dot:nth-child(2) {
+  animation-delay: 200ms;
+}
+
+.typing-indicator .typing-dot:nth-child(3) {
+  animation-delay: 400ms;
+}
+
+.dark .typing-indicator .typing-dot {
+  background-color: #71717a;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
