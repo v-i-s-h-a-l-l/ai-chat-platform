@@ -19,6 +19,7 @@ from app.providers.impl.qdrant_store import get_vector_store
 from app.routes import auth, documents, exports, models, projects, users
 from app.services.rag_warmup import warmup_rag_models
 from app.utils.http_client import close_async_http_client, get_async_http_client
+from app.utils.exception_handlers import register_exception_handlers
 from app.utils.rate_limit import limiter
 
 logging.basicConfig(
@@ -39,6 +40,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+register_exception_handlers(app)
 
 
 def _route_template(request: Request) -> str:

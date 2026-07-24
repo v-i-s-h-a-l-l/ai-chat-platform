@@ -242,6 +242,32 @@ After adding a custom frontend domain, update Render `CORS_ORIGINS` to match.
 - Confirm **Blueprint Path** is `deploy/render.yaml`.
 - Ensure the repo is pushed to GitHub with the latest `deploy/render.yaml`.
 
+### Docker build error: `backend/backend: no such file or directory`
+
+Render joins **Root Directory** with **Docker Context**. If both point at `backend`, you get `backend/backend`.
+
+In `deploy/render.yaml` use:
+
+```yaml
+rootDir: backend
+dockerfilePath: ./Dockerfile.production
+dockerContext: .
+```
+
+Or in Render Dashboard: Root Directory = `backend`, Dockerfile Path = `Dockerfile.production`, Docker Context = `.`
+
+### Frontend calls localhost instead of Render API
+
+- Set `VITE_API_URL` in Vercel environment variables (no trailing slash).
+- Redeploy Vercel after changing — Vite bakes env vars at build time.
+- Repo includes `frontend/.env.production` as a fallback for production builds.
+
+### CORS / cookie auth fails on custom domain
+
+- Set `CORS_ORIGINS=https://yellobot.online,https://www.yellobot.online` (both if you use www).
+- No trailing slashes — backend strips them automatically.
+- `COOKIE_SECURE=true` and `COOKIE_SAMESITE=none` must both be set.
+
 ---
 
 ## Files added for deployment

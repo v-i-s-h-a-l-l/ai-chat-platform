@@ -7,8 +7,9 @@ services:
   - type: web
     name: yellobot-api
     runtime: docker
-    dockerfilePath: Dockerfile.production
-    dockerContext: backend
+    rootDir: backend
+    dockerfilePath: ./Dockerfile.production
+    dockerContext: .
     plan: starter
     healthCheckPath: /health
     disk:

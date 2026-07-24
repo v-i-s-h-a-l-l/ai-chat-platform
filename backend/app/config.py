@@ -92,7 +92,12 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        origins: list[str] = []
+        for origin in self.cors_origins.split(","):
+            normalized = origin.strip().rstrip("/")
+            if normalized:
+                origins.append(normalized)
+        return origins
 
     @property
     def is_production(self) -> bool:

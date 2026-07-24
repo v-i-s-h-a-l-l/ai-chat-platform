@@ -1,9 +1,10 @@
 import uuid
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.prompt_optimization import get_prompt_optimization_service
 from app.main import app
@@ -21,6 +22,23 @@ def mock_user() -> User:
         hashed_password="hashed",
     )
     return user
+
+
+@pytest.fixture
+def mock_db():
+    return MagicMock()
+
+
+@pytest.fixture
+def api_client(mock_user: User, mock_db):
+    """Authenticated TestClient with mocked DB — for route integration tests."""
+    app.dependency_overrides[get_current_user] = lambda: mock_user
+    app.dependency_overrides[get_db] = lambda: mock_db
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture

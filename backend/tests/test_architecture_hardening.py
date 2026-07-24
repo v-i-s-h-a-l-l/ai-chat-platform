@@ -54,6 +54,14 @@ def test_production_rejects_localhost_cors():
         )
 
 
+def test_cors_origins_strip_trailing_slashes():
+    settings = Settings(cors_origins="https://yellobot.online/,https://www.yellobot.online/")
+    assert settings.cors_origins_list == [
+        "https://yellobot.online",
+        "https://www.yellobot.online",
+    ]
+
+
 def test_message_read_model_is_immutable():
     model = MessageReadModel(
         id=uuid4(),

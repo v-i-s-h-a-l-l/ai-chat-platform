@@ -43,14 +43,14 @@ export function coalesceSectionNumber(
   number: string,
   title: string,
 ): { number: string; title: string } {
-  let plainNumber = toPlainDigitSequence(number)
+  const plainNumber = toPlainDigitSequence(number)
   const plainTitle = title.trim()
 
   if (plainNumber.length !== 1 || !plainTitle) {
     return { number: plainNumber, title: plainTitle }
   }
 
-  const keycapLead = /^(\d)\uFE0F?\u20E3[\.\s]?\s*(.*)$/.exec(plainTitle)
+  const keycapLead = /^(\d)\uFE0F?\u20E3[.\s]?\s*(.*)$/.exec(plainTitle)
   if (keycapLead) {
     return {
       number: plainNumber + keycapLead[1],

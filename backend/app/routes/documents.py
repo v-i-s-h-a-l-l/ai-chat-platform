@@ -6,12 +6,9 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.dependencies.auth import get_current_user
-from app.guardrails import GuardrailViolationError
 from app.models.user import User
 from app.schemas.document import DocumentResponse, DocumentUploadResponse
 from app.services.document_service import DocumentService
-from app.services.ingestion_errors import IngestionQueueUnavailableError
-from app.services.upload_validation import UploadConfirmationRequiredError
 from app.utils.mime_validation import detect_mime
 from app.utils.rate_limit import limiter
 from app.utils.upload_reader import read_upload_capped
@@ -64,23 +61,6 @@ async def upload_document(
             data,
             confirmed=confirmed,
         )
-    except UploadConfirmationRequiredError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "message": exc.message,
-                "code": exc.code,
-                "document_type": exc.document_type,
-                "confidence": exc.confidence,
-            },
-        ) from exc
-    except GuardrailViolationError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    except IngestionQueueUnavailableError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
     except ValueError as exc:
         detail = str(exc)
         if "not found" in detail.lower():
