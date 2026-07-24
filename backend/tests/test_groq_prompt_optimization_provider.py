@@ -1,5 +1,15 @@
-from app.services.groq_prompt_optimization_provider import GroqPromptOptimizationProvider
+from app.services.groq_prompt_optimization_provider import (
+    GroqPromptOptimizationProvider,
+    _OPTIMIZER_SYSTEM,
+)
 from app.services.prompt_optimization_provider import PromptOptimizationProviderResult
+
+
+def test_optimizer_system_includes_profanity_and_typo_rules():
+    assert "profanity" in _OPTIMIZER_SYSTEM.lower()
+    assert "motherfucker" in _OPTIMIZER_SYSTEM.lower()
+    assert "GSOD codr" in _OPTIMIZER_SYSTEM
+    assert "good coder" in _OPTIMIZER_SYSTEM
 
 
 def test_parse_json_content_strips_fences():
@@ -18,6 +28,33 @@ def test_normalize_unsafe_result():
         improved_prompt=None,
         changes=[],
     )
+
+
+def test_normalize_unsafe_profanity_result():
+    data = {
+        "safe": False,
+        "reason": "Vulgar language is not allowed on YelloBot.",
+    }
+    result = GroqPromptOptimizationProvider._normalize_result(
+        data, "You are a certified motherfucker."
+    )
+    assert result.safe is False
+    assert result.improved_prompt is None
+    assert "vulgar" in (result.reason or "").lower()
+
+
+def test_normalize_safe_typo_correction_result():
+    data = {
+        "safe": True,
+        "improvedPrompt": "You are a good coder.",
+        "changes": ["Corrected spelling"],
+    }
+    result = GroqPromptOptimizationProvider._normalize_result(
+        data, "You are a GSOD codr."
+    )
+    assert result.safe is True
+    assert result.improved_prompt == "You are a good coder."
+    assert result.changes == ["Corrected spelling"]
 
 
 def test_normalize_safe_result():
