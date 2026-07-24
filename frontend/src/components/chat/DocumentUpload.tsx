@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -9,9 +10,11 @@ import {
 
 import type { ProjectDocument } from "../../types/document";
 
-import type { UploadQueueItem } from "../../types/upload";
+import type { ActivityLogEntry, UploadQueueItem } from "../../types/upload";
 
 import { DOCUMENT_ACCEPT, MAX_UPLOAD_MB } from "../../api/documents";
+
+import { formatActivityLogTime } from "../../utils/formatMessageTime";
 
 import { PaperclipIcon, TrashIcon } from "../icons/NavIcons";
 
@@ -19,6 +22,8 @@ interface DocumentChipListProps {
   documents: ProjectDocument[];
 
   deletingId?: string | null;
+
+  documentLogs?: Record<string, ActivityLogEntry[]>;
 
   onDelete: (documentId: string) => void;
 }
@@ -37,6 +42,8 @@ interface DocumentStatusBannerProps {
   documents: ProjectDocument[];
 
   uploadQueue?: UploadQueueItem[];
+
+  documentLogs?: Record<string, ActivityLogEntry[]>;
 }
 
 function formatFileSize(bytes: number): string {
@@ -79,6 +86,46 @@ function StatusSpinner({ className = "" }: { className?: string }) {
       aria-hidden
     />
   );
+}
+
+export function UploadActivityPanel({
+  logs,
+  className = "",
+}: {
+  logs: ActivityLogEntry[];
+  className?: string;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+    node.scrollTop = node.scrollHeight;
+  }, [logs.length, logs[logs.length - 1]?.id]);
+
+  if (logs.length === 0) return null;
+
+  return (
+    <div
+      ref={scrollRef}
+      className={`max-h-24 overflow-y-auto rounded-lg border border-zinc-200/80 bg-white/70 px-2.5 py-2 font-mono text-[10px] leading-relaxed text-zinc-600 dark:border-zinc-700/80 dark:bg-zinc-900/60 dark:text-zinc-300 ${className}`}
+      aria-live="polite"
+    >
+      {logs.map((log) => (
+        <div key={log.id} className="whitespace-pre-wrap break-words">
+          <span className="text-zinc-400 dark:text-zinc-500">
+            [{formatActivityLogTime(log.at)}]
+          </span>{" "}
+          {log.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function latestLogLine(logs: ActivityLogEntry[] | undefined): string | null {
+  if (!logs || logs.length === 0) return null;
+  return logs[logs.length - 1]?.message ?? null;
 }
 
 function FileTypeIcon({ className = "" }: { className?: string }) {
@@ -148,12 +195,19 @@ export function DocumentStatusBanner({
   uploading,
   documents,
   uploadQueue = [],
+  documentLogs = {},
 }: DocumentStatusBannerProps) {
   const indexing = documents.filter(
     (d) => d.status === "processing" && !d.error_message,
   );
   const uploadInFlight = uploadQueue.some((item) => item.status === "uploading");
   const showUploadBanner = uploading && uploadInFlight;
+
+  const activeQueueLogs = uploadQueue
+    .filter((item) => item.status === "uploading")
+    .flatMap((item) => item.logs ?? []);
+  const activeDocumentLogs = indexing.flatMap((doc) => documentLogs[doc.id] ?? []);
+  const bannerLogs = [...activeQueueLogs, ...activeDocumentLogs];
 
   if (!showUploadBanner && indexing.length === 0) return null;
 
@@ -162,18 +216,24 @@ export function DocumentStatusBanner({
       <div
         role="status"
 
-        className="mb-2 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200"
+        className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200"
       >
-        <StatusSpinner className="text-amber-700 dark:text-amber-300" />
+        <div className="flex items-start gap-2">
+          <StatusSpinner className="mt-0.5 text-amber-700 dark:text-amber-300" />
 
-        <span>
-          <span className="font-semibold">Uploading…</span>
+          <div className="min-w-0 flex-1">
+            <p>
+              <span className="font-semibold">Uploading…</span>
 
-          <span className="text-amber-800/85 dark:text-amber-300/85">
-            {" "}
-            Sending file to the server. Indexing starts right after.
-          </span>
-        </span>
+              <span className="text-amber-800/85 dark:text-amber-300/85">
+                {" "}
+                Sending file to the server. Indexing starts right after.
+              </span>
+            </p>
+
+            <UploadActivityPanel logs={bannerLogs} className="mt-2" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -187,25 +247,29 @@ export function DocumentStatusBanner({
     <div
       role="status"
 
-      className="mb-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900 dark:border-amber-800/80 dark:bg-amber-950/50 dark:text-amber-100"
+      className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900 dark:border-amber-800/80 dark:bg-amber-950/50 dark:text-amber-100"
     >
-      <StatusSpinner className="mt-0.5 text-amber-600 dark:text-amber-300" />
+      <div className="flex items-start gap-2">
+        <StatusSpinner className="mt-0.5 text-amber-600 dark:text-amber-300" />
 
-      <div className="min-w-0">
-        <p>
-          <span className="font-semibold">Uploaded · Indexing…</span>
+        <div className="min-w-0 flex-1">
+          <p>
+            <span className="font-semibold">Uploaded · Indexing…</span>
 
-          <span className="text-amber-800/85 dark:text-amber-200/85">
-            {" "}
-            {label} {names.length === 1 ? "is" : "are"} being prepared for chat.
-          </span>
-        </p>
+            <span className="text-amber-800/85 dark:text-amber-200/85">
+              {" "}
+              {label} {names.length === 1 ? "is" : "are"} being prepared for chat.
+            </span>
+          </p>
 
-        <p className="mt-0.5 text-amber-700/75 dark:text-amber-300/70">
-          You can keep chatting. Answers can use{" "}
-          {names.length === 1 ? "this file" : "these files"} once status shows
-          Ready.
-        </p>
+          <p className="mt-0.5 text-amber-700/75 dark:text-amber-300/70">
+            You can keep chatting. Answers can use{" "}
+            {names.length === 1 ? "this file" : "these files"} once status shows
+            Ready.
+          </p>
+
+          <UploadActivityPanel logs={bannerLogs} className="mt-2" />
+        </div>
       </div>
     </div>
   );
@@ -295,6 +359,12 @@ export function UploadQueueList({
                 <p className={`truncate text-[11px] ${queueStatusClass(item)}`}>
                   {queueStatusLabel(item)}
                 </p>
+
+                {(item.status === "uploading" || item.status === "success") &&
+                  item.logs &&
+                  item.logs.length > 0 && (
+                    <UploadActivityPanel logs={item.logs} className="mt-2" />
+                  )}
               </div>
 
               <span className="hidden text-[11px] text-zinc-400 sm:inline">
@@ -325,17 +395,21 @@ export function UploadQueueList({
 export function DocumentChipList({
   documents,
   deletingId,
+  documentLogs = {},
   onDelete,
 }: DocumentChipListProps) {
   if (documents.length === 0) return null;
 
   return (
     <div className="mb-2 flex flex-wrap gap-2">
-      {documents.map((doc) => (
+      {documents.map((doc) => {
+        const latestLog = latestLogLine(documentLogs[doc.id]);
+
+        return (
         <div
           key={doc.id}
 
-          className="group flex max-w-full items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-[12px] dark:border-zinc-700 dark:bg-zinc-800/80"
+          className="group flex max-w-full flex-col gap-1 rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-[12px] dark:border-zinc-700 dark:bg-zinc-800/80"
 
           title={
             doc.error_message
@@ -345,6 +419,7 @@ export function DocumentChipList({
                 : doc.filename
           }
         >
+          <div className="flex max-w-full items-center gap-2">
           <span className="max-w-[140px] truncate font-medium text-zinc-700 dark:text-zinc-200">
             {doc.filename}
           </span>
@@ -388,8 +463,16 @@ export function DocumentChipList({
               <TrashIcon className="h-3 w-3" />
             )}
           </button>
+          </div>
+
+          {doc.status === "processing" && latestLog && (
+            <p className="truncate font-mono text-[10px] text-amber-700/80 dark:text-amber-300/80">
+              {latestLog}
+            </p>
+          )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

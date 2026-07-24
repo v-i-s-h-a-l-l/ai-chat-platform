@@ -53,19 +53,22 @@ describe('useProjectDocuments', () => {
   })
 
   it('processes pending uploads after addFiles', async () => {
-    vi.mocked(documentApi.upload).mockResolvedValue({
-      message: 'Uploaded',
-      document: {
-        id: 'doc-2',
-        project_id: 'proj-1',
-        filename: 'report.pdf',
-        mime_type: 'application/pdf',
-        file_size: 200,
-        status: 'processing',
-        error_message: null,
-        chunk_count: 0,
-        created_at: '2026-01-01T00:00:00Z',
-      },
+    vi.mocked(documentApi.upload).mockImplementation(async (_projectId, _file, options) => {
+      options?.onProgress?.(50)
+      return {
+        message: 'Uploaded',
+        document: {
+          id: 'doc-2',
+          project_id: 'proj-1',
+          filename: 'report.pdf',
+          mime_type: 'application/pdf',
+          file_size: 200,
+          status: 'processing',
+          error_message: null,
+          chunk_count: 0,
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      }
     })
 
     const { result } = renderHook(() => useProjectDocuments('proj-1'))
@@ -85,6 +88,15 @@ describe('useProjectDocuments', () => {
 
     await waitFor(() => {
       expect(result.current.uploadQueue.some((item) => item.status === 'uploading')).toBe(false)
+    })
+
+    await waitFor(() => {
+      const queued = result.current.uploadQueue.find((item) => item.file.name === 'report.pdf')
+      expect(queued?.logs?.some((log) => log.message.includes('Queued for upload'))).toBe(true)
+    })
+
+    await waitFor(() => {
+      expect(result.current.documentLogs['doc-2']?.length).toBeGreaterThan(0)
     })
   })
 

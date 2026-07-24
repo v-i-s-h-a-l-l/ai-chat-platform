@@ -11,7 +11,7 @@ import type { ChatMessage } from "../../types/project";
 
 import type { ProjectDocument } from "../../types/document";
 
-import type { UploadQueueItem } from "../../types/upload";
+import type { UploadQueueItem, ActivityLogEntry } from "../../types/upload";
 
 import { MAX_UPLOAD_MB } from "../../api/documents";
 
@@ -56,6 +56,8 @@ interface ChatWindowProps {
 
   uploadQueue?: UploadQueueItem[];
 
+  documentLogs?: Record<string, ActivityLogEntry[]>;
+
   deletingDocumentId?: string | null;
 
   onDocumentUpload?: (files: FileList | File[]) => void;
@@ -85,6 +87,8 @@ export function ChatWindow({
   documentsUploading = false,
 
   uploadQueue = [],
+
+  documentLogs = {},
 
   deletingDocumentId = null,
 
@@ -169,6 +173,7 @@ export function ChatWindow({
         webSearchUsed={msg.web_search_used}
         documentsUsed={msg.documents_used}
         isStreaming={msg.id === streamingId}
+        createdAt={msg.created_at}
       />
     );
   }
@@ -267,6 +272,7 @@ export function ChatWindow({
               uploading={documentsUploading}
               documents={documents}
               uploadQueue={uploadQueue}
+              documentLogs={documentLogs}
             />
           )}
 
@@ -282,6 +288,8 @@ export function ChatWindow({
               documents={documents}
 
               deletingId={deletingDocumentId}
+
+              documentLogs={documentLogs}
 
               onDelete={onDocumentDelete}
             />

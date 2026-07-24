@@ -1,6 +1,7 @@
 import { lazy, memo, Suspense, useMemo } from 'react'
 import { YelloBotLogo } from '../brand/YelloBotLogo'
 import { prepareContentForDisplay } from '../../utils/sourceSectionDisplay'
+import { formatMessageTime } from '../../utils/formatMessageTime'
 import { MessageActions } from './MessageActions'
 import { TypingIndicator } from './TypingIndicator'
 
@@ -19,6 +20,7 @@ interface MessageBubbleProps {
   webSearchUsed?: boolean
   documentsUsed?: boolean
   isStreaming?: boolean
+  createdAt?: string
 }
 
 export const MessageBubble = memo(function MessageBubble({
@@ -29,8 +31,10 @@ export const MessageBubble = memo(function MessageBubble({
   webSearchUsed,
   documentsUsed,
   isStreaming,
+  createdAt,
 }: MessageBubbleProps) {
   const isUser = role === 'user'
+  const formattedTime = formatMessageTime(createdAt)
   const sourceDisplay = useMemo(
     () => ({ webSearchUsed, documentsUsed }),
     [webSearchUsed, documentsUsed],
@@ -100,6 +104,15 @@ export const MessageBubble = memo(function MessageBubble({
             </Suspense>
           )}
         </div>
+        {(isStreaming || formattedTime) && (
+          <p
+            className={`mt-1 text-[11px] text-zinc-400 dark:text-zinc-500 ${
+              isUser ? 'text-right' : 'text-left'
+            }`}
+          >
+            {isStreaming ? 'Sending…' : formattedTime}
+          </p>
+        )}
       </div>
     </div>
   )
