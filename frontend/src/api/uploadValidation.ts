@@ -1,5 +1,3 @@
-import axios from 'axios'
-
 export interface UploadConfirmationDetail {
   message: string
   code: 'upload_confirmation_required'

@@ -12,7 +12,7 @@ from app.dependencies.prompt_optimization import get_prompt_optimization_service
 from app.guardrails import GuardrailViolationError
 from app.models.user import User
 from app.schemas.chat import ChatMessageResponse, ChatRequest, ChatResponse
-from app.schemas.project import ProjectCreate, ProjectResponse
+from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
 from app.schemas.prompt_optimization import (
     PromptOptimizationRequest,
     PromptOptimizationResponse,
@@ -88,20 +88,47 @@ def get_project(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        project = ProjectService.get_project(db, project_id, current_user.id)
+        project = ProjectService.get_project(db, project_id, current_user.id, touch=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return serialize_project(project)
+
+
+@router.patch("/{project_id}", response_model=ProjectResponse)
+def update_project(
+    project_id: UUID,
+    data: ProjectUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        project = ProjectService.update_project(db, project_id, current_user.id, data)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return serialize_project(project)
+
+
+@router.post("/{project_id}/duplicate", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
+def duplicate_project(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        project = ProjectService.duplicate_project(db, project_id, current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return serialize_project(project)
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(
+async def delete_project(
     project_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        ProjectService.delete_project(db, project_id, current_user.id)
+        await ProjectService.delete_project(db, project_id, current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -133,7 +160,13 @@ async def chat(
     provider: LLMProvider = Depends(get_llm_provider),
 ):
     try:
-        reply = await ChatService.send_message(project_id, current_user.id, data.message, provider)
+        reply = await ChatService.send_message(
+            project_id,
+            current_user.id,
+            data.message,
+            provider,
+            request_model=data.model,
+        )
     except GuardrailViolationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except ValueError as exc:
@@ -171,7 +204,13 @@ async def chat_stream(
     current_user: User = Depends(get_current_user),
     provider: LLMProvider = Depends(get_llm_provider),
 ):
-    events = ChatService.stream_message(project_id, current_user.id, data.message, provider)
+    events = ChatService.stream_message(
+        project_id,
+        current_user.id,
+        data.message,
+        provider,
+        request_model=data.model,
+    )
     return StreamingResponse(
         _to_sse_stream(events),
         media_type="text/event-stream",

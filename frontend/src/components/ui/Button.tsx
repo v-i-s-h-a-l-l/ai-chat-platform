@@ -18,7 +18,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const base =
-    'inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+    'inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
 
   const sizes = {
     sm: 'rounded-lg px-3 py-1.5 text-[13px]',
@@ -27,11 +27,11 @@ export function Button({
 
   const variants = {
     primary:
-      'bg-gradient-to-b from-violet-600 to-violet-700 text-white shadow-sm shadow-violet-600/20 hover:from-violet-500 hover:to-violet-600 active:scale-[0.98]',
+      'bg-brand text-zinc-900 shadow-sm shadow-amber-500/25 hover:bg-brand-hover active:scale-[0.98] dark:text-zinc-950',
     secondary:
       'border border-zinc-200 bg-white text-zinc-700 shadow-sm hover:bg-zinc-50 hover:border-zinc-300 active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700 dark:hover:border-zinc-600',
     ghost:
-      'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800',
+      'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200',
     danger:
       'border border-red-200 bg-white text-red-600 hover:bg-red-50 hover:border-red-300',
   }

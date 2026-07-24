@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { userApi } from '../api/auth'
 import { getErrorMessage } from '../api/client'
 import { detectExportIntent, downloadExport } from '../api/export'
 import { projectApi } from '../api/projects'
+import { getModelById, resolveActiveModelId } from '../config/availableModels'
+import { useAuth } from '../contexts/AuthContext'
+import { useProjectsOptional } from '../contexts/ProjectsContext'
+import { useToastOptional } from '../contexts/ToastContext'
+import { writeActiveProjectId } from '../utils/sidebarStorage'
+import { readUserPreferredModel, writeUserPreferredModel } from '../utils/modelStorage'
 import type { ChatMessage, Project } from '../types/project'
 
 interface UseChatStreamResult {
@@ -11,6 +18,8 @@ interface UseChatStreamResult {
   sending: boolean
   streamingId: string | null
   error: string
+  selectedModelId: string
+  selectModel: (modelId: string) => Promise<void>
   sendMessage: (message: string) => Promise<void>
   stopGeneration: () => void
 }
@@ -22,38 +31,100 @@ interface UseChatStreamResult {
  * independent of the page's markup.
  */
 export function useChatStream(projectId: string | undefined): UseChatStreamResult {
+  const projectsCtx = useProjectsOptional()
+  const { user, setUser } = useAuth()
+  const toast = useToastOptional()
   const [project, setProject] = useState<Project | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [streamingId, setStreamingId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [selectedModelId, setSelectedModelId] = useState<string>(() =>
+    resolveActiveModelId(null, readUserPreferredModel()),
+  )
 
   const abortRef = useRef<AbortController | null>(null)
   const metaReceivedRef = useRef(false)
   const tokenBufferRef = useRef('')
   const tokenFlushRafRef = useRef<number | null>(null)
+  const markOpenedRef = useRef(projectsCtx?.markProjectOpened)
+  const selectedModelRef = useRef(selectedModelId)
 
-  const fetchData = useCallback(async () => {
-    if (!projectId) return
-    try {
-      const [projectData, messageData] = await Promise.all([
-        projectApi.get(projectId),
-        projectApi.getMessages(projectId),
-      ])
-      setProject(projectData)
-      setMessages(messageData)
-    } catch (err) {
-      setError(getErrorMessage(err))
-    } finally {
-      setLoading(false)
-    }
-  }, [projectId])
+  markOpenedRef.current = projectsCtx?.markProjectOpened
+  selectedModelRef.current = selectedModelId
 
   useEffect(() => {
-    fetchData()
-    return () => abortRef.current?.abort()
-  }, [fetchData])
+    if (!projectId) {
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setLoading(true)
+    setError('')
+    setProject(null)
+    setMessages([])
+    setStreamingId(null)
+    setSending(false)
+    abortRef.current?.abort()
+
+    ;(async () => {
+      try {
+        const [projectData, messageData] = await Promise.all([
+          projectApi.get(projectId),
+          projectApi.getMessages(projectId),
+        ])
+        if (cancelled) return
+        setProject(projectData)
+        setMessages(messageData)
+        setSelectedModelId(
+          resolveActiveModelId(
+            projectData.llm_model,
+            user?.preferred_llm_model ?? readUserPreferredModel(),
+          ),
+        )
+        writeActiveProjectId(projectId)
+        markOpenedRef.current?.(projectData)
+      } catch (err) {
+        if (!cancelled) setError(getErrorMessage(err))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+      abortRef.current?.abort()
+    }
+  }, [projectId, user?.preferred_llm_model])
+
+  const selectModel = useCallback(
+    async (modelId: string) => {
+      if (!projectId || modelId === selectedModelRef.current) return
+
+      const model = getModelById(modelId)
+      if (!model) return
+
+      setSelectedModelId(modelId)
+      writeUserPreferredModel(modelId)
+      setProject((prev) => (prev ? { ...prev, llm_model: modelId } : prev))
+
+      try {
+        const [updatedProject, updatedUser] = await Promise.all([
+          projectApi.update(projectId, { llm_model: modelId }),
+          userApi.updateMe({ preferred_llm_model: modelId }),
+        ])
+        setProject(updatedProject)
+        setUser(updatedUser)
+        projectsCtx?.refreshProjects().catch(() => undefined)
+        toast?.showToast(`Switched to ${model.name}`)
+      } catch (err) {
+        setError(getErrorMessage(err))
+      }
+    },
+    [projectId, projectsCtx, setUser, toast],
+  )
 
   function flushBufferedTokens(streamMsgId: string) {
     if (tokenFlushRafRef.current !== null) return
@@ -156,6 +227,7 @@ export function useChatStream(projectId: string | undefined): UseChatStreamResul
         await projectApi.streamMessage(
           projectId,
           message,
+          selectedModelRef.current,
           {
             onMeta: ({ user_message, web_search_used, documents_used }) => {
               metaReceivedRef.current = true
@@ -248,5 +320,16 @@ export function useChatStream(projectId: string | undefined): UseChatStreamResul
     [projectId, sending, messages],
   )
 
-  return { project, messages, loading, sending, streamingId, error, sendMessage, stopGeneration }
+  return {
+    project,
+    messages,
+    loading,
+    sending,
+    streamingId,
+    error,
+    selectedModelId,
+    selectModel,
+    sendMessage,
+    stopGeneration,
+  }
 }

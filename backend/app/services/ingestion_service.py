@@ -5,15 +5,30 @@ from uuid import UUID, uuid4
 from app.config import settings
 from app.database import SessionLocal
 from app.models.document import Document
-from app.providers.impl.bge_embedding import get_embedding_provider
+from app.providers.impl.embedding_factory import get_embedding_provider
 from app.providers.impl.document_parser import LlamaDocumentParser
 from app.providers.impl.qdrant_store import get_vector_store
 from app.providers.impl.semantic_chunker import SemanticChunker
 from app.providers.types import ChunkPayload, DocumentStatus
 from app.repositories.document_chunk_repository import DocumentChunkRepository
 from app.repositories.document_repository import DocumentRepository
+from app.utils.errors import truncate_client_error
 
 logger = logging.getLogger(__name__)
+
+NON_RETRYABLE_ERRORS = (
+    "no extractable text",
+    "scan or image",
+    "chunking produced no chunks",
+    "unsupported file type",
+)
+
+
+def _is_non_retryable(exc: Exception) -> bool:
+    if not isinstance(exc, ValueError):
+        return False
+    msg = str(exc).strip().lower()
+    return any(phrase in msg for phrase in NON_RETRYABLE_ERRORS)
 
 
 class IngestionService:
@@ -39,7 +54,10 @@ class IngestionService:
             t0 = time.perf_counter()
             parsed = await self._parser.parse(doc.storage_path, doc.mime_type)
             if not parsed.full_text.strip():
-                raise ValueError("No extractable text in document")
+                raise ValueError(
+                    "This PDF looks like a scan or image — no readable text was found. "
+                    "Try a text-based PDF or DOCX export."
+                )
             extract_ms = (time.perf_counter() - t0) * 1000
             logger.info("Extraction: %.0fms", extract_ms)
 
@@ -101,6 +119,9 @@ class IngestionService:
             DocumentRepository.update_status(
                 db, document_id, DocumentStatus.READY.value, chunk_count=len(text_chunks)
             )
+            from app.repositories.project_repository import ProjectRepository
+
+            ProjectRepository.set_active_document(db, doc.project_id, document_id)
 
             total_ms = (time.perf_counter() - t_total) * 1000
             logger.info(
@@ -117,13 +138,16 @@ class IngestionService:
         except Exception as exc:
             logger.exception("Ingestion failed for document %s", document_id)
             retry = DocumentRepository.increment_retry(db, document_id)
+            non_retryable = _is_non_retryable(exc)
             status = (
                 DocumentStatus.FAILED.value
-                if retry >= settings.ingestion_max_retries
+                if non_retryable or retry >= settings.ingestion_max_retries
                 else DocumentStatus.PROCESSING.value
             )
-            DocumentRepository.update_status(db, document_id, status, error_message=str(exc)[:2000])
-            if retry < settings.ingestion_max_retries:
+            DocumentRepository.update_status(
+                db, document_id, status, error_message=truncate_client_error(str(exc))
+            )
+            if not non_retryable and retry < settings.ingestion_max_retries:
                 raise  # arq will retry
         finally:
             db.close()

@@ -15,7 +15,7 @@ async def process_document(ctx, document_id: str) -> None:
 class WorkerSettings:
     functions = [process_document]
     redis_settings = RedisSettings.from_dsn(settings.redis_url)
-    max_jobs = 1
+    max_jobs = settings.ingestion_max_jobs
     job_timeout = 600
     retry_jobs = True
     max_tries = settings.ingestion_max_retries + 1

@@ -79,7 +79,7 @@ export function RegisterPage() {
       <Navbar variant="auth" />
       <AuthCard
         title="Create your account"
-        subtitle="Start building AI chatbots today"
+        subtitle="Start building with YelloBot today"
         footer={
           <>
             Already have an account?{' '}

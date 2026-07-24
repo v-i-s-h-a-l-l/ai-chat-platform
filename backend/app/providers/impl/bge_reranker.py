@@ -24,6 +24,15 @@ def _get_reranker():
     return _model
 
 
+class PassthroughReranker(Reranker):
+    """Skip cross-encoder reranking (used when RERANK_ENABLED=false)."""
+
+    async def rerank(
+        self, query: str, chunks: list[RetrievedChunk], top_k: int
+    ) -> list[RetrievedChunk]:
+        return chunks[:top_k]
+
+
 class BgeReranker(Reranker):
     """Singleton BGE cross-encoder reranker."""
 
@@ -65,4 +74,6 @@ class BgeReranker(Reranker):
 
 @lru_cache(maxsize=1)
 def get_reranker() -> Reranker:
+    if not settings.rerank_enabled:
+        return PassthroughReranker()
     return BgeReranker()

@@ -15,6 +15,7 @@ class MetaEvent:
     user_message: ChatMessage
     web_search_used: bool
     documents_used: bool = False
+    retrieval_degraded: bool = False
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ class DoneEvent:
     assistant_message: ChatMessage
     web_search_used: bool
     documents_used: bool = False
+    retrieval_degraded: bool = False
 
 
 @dataclass(frozen=True)

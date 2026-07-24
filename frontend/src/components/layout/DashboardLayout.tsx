@@ -1,111 +1,96 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { authApi } from '../../api/auth'
-import { useAuth } from '../../contexts/AuthContext'
-import { ThemeToggle } from '../ui/ThemeToggle'
+import { useEffect, useState } from 'react'
+import { Outlet, useLocation } from 'react-router-dom'
+import { ProjectsProvider } from '../../contexts/ProjectsContext'
 import {
-  FolderIcon,
-  HomeIcon,
-  LogoutIcon,
-  SettingsIcon,
-  SparklesIcon,
-} from '../icons/NavIcons'
+  readSidebarCollapsed,
+  writeSidebarCollapsed,
+} from '../../utils/sidebarStorage'
+import { MenuIcon, XIcon } from '../icons/NavIcons'
+import { YelloBotLogo } from '../brand/YelloBotLogo'
+import { Sidebar } from './Sidebar'
 
-const navItems = [
-  { label: 'Home', to: '/home', icon: HomeIcon, end: true },
-  { label: 'Projects', to: '/home', icon: FolderIcon, end: true },
-  { label: 'Settings', to: '/settings', icon: SettingsIcon, end: false },
-]
-
-export function DashboardLayout() {
-  const { user, clearSession } = useAuth()
-  const navigate = useNavigate()
+function DashboardShell() {
   const location = useLocation()
-  const isChatPage = location.pathname.startsWith('/projects/')
+  const [collapsed, setCollapsed] = useState(readSidebarCollapsed)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
-  async function handleLogout() {
-    try {
-      await authApi.logout()
-    } finally {
-      clearSession()
-      navigate('/login')
-    }
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [location.pathname])
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev
+      writeSidebarCollapsed(next)
+      return next
+    })
   }
-
-  const initials = user?.name
-    ?.split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface">
-      {/* Sidebar */}
-      <aside className="hidden w-[260px] flex-shrink-0 flex-col bg-sidebar lg:flex">
-        {/* Logo */}
-        <div className="flex h-[60px] items-center justify-between px-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 shadow-lg shadow-violet-500/20">
-              <SparklesIcon className="h-4 w-4 text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold tracking-tight text-white">Chatbot</p>
-              <p className="text-[11px] text-zinc-500">Platform</p>
-            </div>
-          </div>
-          <ThemeToggle className="!border-zinc-700 !bg-zinc-800 !text-zinc-300 hover:!bg-zinc-700 hover:!text-white" />
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 space-y-0.5 px-3 pt-2">
-          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
-            Menu
-          </p>
-          {navItems.map((item) => (
-            <NavLink
-              key={item.label}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) => {
-                const active = isActive && !isChatPage
-                return `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-150 ${
-                  active
-                    ? 'bg-sidebar-active text-white shadow-sm'
-                    : 'text-zinc-400 hover:bg-sidebar-hover hover:text-zinc-200'
-                }`
-              }}
-            >
-              <item.icon className="h-[18px] w-[18px] flex-shrink-0 opacity-80" />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-
-        {/* User footer */}
-        <div className="border-t border-zinc-800/80 p-3">
-          <div className="flex items-center gap-3 rounded-xl bg-sidebar-hover px-3 py-2.5">
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 text-xs font-bold text-white">
-              {initials || '?'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium text-zinc-200">{user?.name}</p>
-              <p className="truncate text-[11px] text-zinc-500">{user?.email}</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              title="Logout"
-              className="flex-shrink-0 rounded-lg p-1.5 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
-            >
-              <LogoutIcon />
-            </button>
-          </div>
-        </div>
+      {/* Desktop sidebar */}
+      <aside
+        className={`hidden flex-shrink-0 flex-col transition-[width] duration-200 ease-out lg:flex ${
+          collapsed ? 'w-[72px]' : 'w-[260px]'
+        }`}
+      >
+        <Sidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       </aside>
 
-      {/* Main content */}
-      <main className="flex flex-1 flex-col overflow-hidden">
-        <Outlet />
-      </main>
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-[280px] transform transition-transform duration-200 ease-out lg:hidden ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <Sidebar collapsed={false} onToggleCollapsed={() => setMobileOpen(false)} onNavigate={() => setMobileOpen(false)} />
+      </aside>
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex h-[60px] flex-shrink-0 items-center border-b border-zinc-200/80 bg-white px-4 dark:border-zinc-800 dark:bg-zinc-900 lg:hidden">
+          <button
+            type="button"
+            aria-label="Open navigation menu"
+            onClick={() => setMobileOpen(true)}
+            className="rounded-lg p-2 text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            <MenuIcon />
+          </button>
+          <YelloBotLogo size="sm" className="-ml-1" />
+          {mobileOpen && (
+            <button
+              type="button"
+              aria-label="Close navigation menu"
+              onClick={() => setMobileOpen(false)}
+              className="ml-auto rounded-lg p-2 text-zinc-600 dark:text-zinc-300"
+            >
+              <XIcon />
+            </button>
+          )}
+        </div>
+
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
+  )
+}
+
+export function DashboardLayout() {
+  return (
+    <ProjectsProvider>
+      <DashboardShell />
+    </ProjectsProvider>
   )
 }

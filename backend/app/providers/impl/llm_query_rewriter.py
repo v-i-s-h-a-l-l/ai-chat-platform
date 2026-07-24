@@ -1,4 +1,5 @@
 import logging
+import re
 
 from app.providers.base import QueryRewriter
 from app.services.llm_provider import LLMProvider
@@ -15,6 +16,14 @@ Follow-up question: {query}
 
 Standalone question:"""
 
+_DEICTIC_PATTERN = re.compile(
+    r"\b("
+    r"this|that|it|its|these|those|above|previous|earlier|"
+    r"the doc|the file|my doc|my file|same|mentioned"
+    r")\b",
+    re.IGNORECASE,
+)
+
 
 class LlmQueryRewriter(QueryRewriter):
     def __init__(self, llm: LLMProvider) -> None:
@@ -22,6 +31,9 @@ class LlmQueryRewriter(QueryRewriter):
 
     async def rewrite(self, query: str, history: list[dict[str, str]]) -> str:
         if not history:
+            return query
+
+        if len(history) <= 2 and not _DEICTIC_PATTERN.search(query):
             return query
 
         history_text = "\n".join(f"{m['role']}: {m['content'][:200]}" for m in history[-4:])

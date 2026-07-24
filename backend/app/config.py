@@ -50,7 +50,15 @@ class Settings(BaseSettings):
     qdrant_collection: str = "chatbot_chunks"
     document_storage_path: str = "./storage/documents"
     embedding_model: str = "BAAI/bge-base-en-v1.5"
+    embedding_provider: str = "local"  # local | huggingface
+    huggingface_api_key: str = ""
+    huggingface_api_url: str = "https://router.huggingface.co/hf-inference"
+    huggingface_embedding_batch_size: int = 16
+    huggingface_timeout_seconds: float = 60.0
+    huggingface_max_retries: int = 3
+    huggingface_retry_backoff_seconds: float = 2.0
     reranker_model: str = "BAAI/bge-reranker-base"
+    rerank_enabled: bool = True
     embedding_dimension: int = 768
     embedding_query_prefix: str = (
         "Represent this sentence for searching relevant passages: "
@@ -125,6 +133,10 @@ class Settings(BaseSettings):
             raise ValueError("CORS_ORIGINS must not contain localhost in production")
         if self.metrics_enabled and not self.metrics_token.strip():
             raise ValueError("METRICS_TOKEN is required when metrics are enabled in production")
+        if self.embedding_provider.lower() == "huggingface" and not self.huggingface_api_key.strip():
+            raise ValueError(
+                "HUGGINGFACE_API_KEY is required in production when EMBEDDING_PROVIDER=huggingface"
+            )
         return self
 
 

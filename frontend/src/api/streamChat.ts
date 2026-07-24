@@ -1,19 +1,20 @@
 import { refreshAccessToken } from './client'
+import { API_URL, CSRF_HEADERS } from '../config/api'
 import type { ChatMessage } from '../types/project'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export interface StreamChatHandlers {
   onMeta: (data: {
     user_message: ChatMessage
     web_search_used: boolean
     documents_used: boolean
+    retrieval_degraded?: boolean
   }) => void
   onToken: (content: string) => void
   onDone: (data: {
     assistant_message: ChatMessage
     web_search_used: boolean
     documents_used: boolean
+    retrieval_degraded?: boolean
   }) => void
   onStopped?: (data: {
     assistant_message: ChatMessage
@@ -33,12 +34,17 @@ function parseSseBlock(block: string): { event: string; data: string } | null {
   return data ? { event, data } : null
 }
 
-function postStream(projectId: string, message: string, signal?: AbortSignal): Promise<Response> {
+function postStream(
+  projectId: string,
+  message: string,
+  model: string,
+  signal?: AbortSignal,
+): Promise<Response> {
   return fetch(`${API_URL}/projects/${projectId}/chat/stream`, {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message }),
+    headers: { 'Content-Type': 'application/json', ...CSRF_HEADERS },
+    body: JSON.stringify({ message, model }),
     signal,
   })
 }
@@ -46,12 +52,13 @@ function postStream(projectId: string, message: string, signal?: AbortSignal): P
 export async function streamChatMessage(
   projectId: string,
   message: string,
+  model: string,
   handlers: StreamChatHandlers,
   signal?: AbortSignal,
 ): Promise<void> {
   let response: Response
   try {
-    response = await postStream(projectId, message, signal)
+    response = await postStream(projectId, message, model, signal)
   } catch (err) {
     if (signal?.aborted) return
     throw err
@@ -63,7 +70,7 @@ export async function streamChatMessage(
   if (response.status === 401) {
     try {
       await refreshAccessToken()
-      response = await postStream(projectId, message, signal)
+      response = await postStream(projectId, message, model, signal)
     } catch {
       if (signal?.aborted) return
       // Refresh failed — fall through to normal error handling below using

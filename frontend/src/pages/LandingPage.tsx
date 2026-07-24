@@ -1,24 +1,26 @@
 import { Link } from 'react-router-dom'
+import { YelloBotLogo } from '../components/brand/YelloBotLogo'
 import { Navbar } from '../components/layout/Navbar'
 import { Button } from '../components/ui/Button'
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-violet-50/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-amber-50/40 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
       <Navbar />
 
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <section className="flex flex-col items-center py-24 text-center sm:py-32">
-          <span className="mb-6 inline-flex items-center rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-medium text-primary-700">
+          <span className="mb-6 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-4 py-1.5 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
             AI-Powered Conversations
           </span>
 
-          <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-slate-900 sm:text-6xl">
-            Build intelligent chatbots for your business
+          <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-slate-900 sm:text-6xl dark:text-zinc-50">
+            Your AI assistant, powered by{' '}
+            <YelloBotLogo size="inherit" className="inline" />
           </h1>
 
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
-            A modern platform to create, manage, and deploy AI chatbots. Get started
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 dark:text-zinc-300">
+            Create, manage, and chat with custom AI projects on YelloBot. Get started
             in minutes with a secure, scalable foundation built for production.
           </p>
 
@@ -35,16 +37,25 @@ export function LandingPage() {
 
           <div className="mt-20 grid w-full max-w-4xl gap-6 sm:grid-cols-3">
             {[
-              { title: 'Secure Auth', desc: 'JWT-based authentication out of the box' },
-              { title: 'Modern Stack', desc: 'React 19, FastAPI, and PostgreSQL' },
-              { title: 'Production Ready', desc: 'Clean architecture built to scale' },
+              {
+                title: 'Custom AI Projects',
+                desc: 'Create assistants with their own instructions, tone, and persistent chat history.',
+              },
+              {
+                title: 'Chat With Your Documents',
+                desc: 'Upload PDFs, Word files, and notes — YelloBot answers using your uploaded content.',
+              },
+              {
+                title: 'Live Web Search',
+                desc: 'When your files are not enough, pull in fresh answers from the web in real time.',
+              },
             ].map((feature) => (
               <div
                 key={feature.title}
-                className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm"
+                className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-none"
               >
-                <h3 className="font-semibold text-slate-900">{feature.title}</h3>
-                <p className="mt-2 text-sm text-slate-500">{feature.desc}</p>
+                <h3 className="font-semibold text-slate-900 dark:text-zinc-100">{feature.title}</h3>
+                <p className="mt-2 text-sm text-slate-500 dark:text-zinc-400">{feature.desc}</p>
               </div>
             ))}
           </div>

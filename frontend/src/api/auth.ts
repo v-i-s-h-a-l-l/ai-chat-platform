@@ -4,6 +4,7 @@ import type {
   MessageResponse,
   RegisterCredentials,
   User,
+  UserUpdate,
 } from '../types/auth'
 
 export const authApi = {
@@ -27,5 +28,9 @@ export const authApi = {
 export const userApi = {
   getMe(): Promise<User> {
     return api.get<User>('/users/me', { skipAuthRefresh: true }).then((res) => res.data)
+  },
+
+  updateMe(data: UserUpdate): Promise<User> {
+    return api.patch<User>('/users/me', data).then((res) => res.data)
   },
 }

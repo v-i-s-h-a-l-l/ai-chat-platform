@@ -1,4 +1,5 @@
 import logging
+import shutil
 from pathlib import Path
 from uuid import UUID
 
@@ -37,6 +38,12 @@ class FileStorage:
         path = Path(storage_path)
         if path.exists():
             path.unlink()
+
+    def delete_project_dir(self, project_id: UUID) -> None:
+        path = self._base / str(project_id)
+        if path.exists():
+            shutil.rmtree(path, ignore_errors=True)
+            logger.info("Removed project storage directory: %s", path)
 
     def get_path(self, project_id: UUID, document_id: UUID, filename: str) -> str:
         safe_name = Path(filename).name

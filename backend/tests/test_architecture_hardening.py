@@ -22,6 +22,35 @@ def test_production_rejects_inline_ingestion_fallback():
             cookie_secure=True,
             groq_api_key="gsk_test",
             ingestion_inline_fallback=True,
+            rate_limit_use_redis=True,
+            cors_origins="https://app.example.com",
+            metrics_token="metrics-secret",
+        )
+
+
+def test_production_requires_redis_rate_limits():
+    with pytest.raises(ValueError, match="RATE_LIMIT_USE_REDIS"):
+        Settings(
+            environment="production",
+            secret_key="not-the-default-secret-key-value",
+            cookie_secure=True,
+            groq_api_key="gsk_test",
+            rate_limit_use_redis=False,
+            cors_origins="https://app.example.com",
+            metrics_token="metrics-secret",
+        )
+
+
+def test_production_rejects_localhost_cors():
+    with pytest.raises(ValueError, match="localhost"):
+        Settings(
+            environment="production",
+            secret_key="not-the-default-secret-key-value",
+            cookie_secure=True,
+            groq_api_key="gsk_test",
+            rate_limit_use_redis=True,
+            cors_origins="http://localhost:5173",
+            metrics_token="metrics-secret",
         )
 
 

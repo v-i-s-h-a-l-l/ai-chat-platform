@@ -1,5 +1,7 @@
 import axios from 'axios'
 
+import { API_URL, CSRF_HEADERS } from '../config/api'
+
 declare module 'axios' {
   interface AxiosRequestConfig {
     /** Skip the 401 → /auth/refresh retry (used for initial session bootstrap). */
@@ -7,14 +9,13 @@ declare module 'axios' {
   }
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-
 export const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
   timeout: 10_000,
   headers: {
     'Content-Type': 'application/json',
+    ...CSRF_HEADERS,
   },
 })
 
@@ -79,20 +80,37 @@ export function getErrorMessage(error: unknown): string {
       if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
         return 'Cannot reach the server. Make sure the backend is running on port 8000 and PostgreSQL (Docker) is started.'
       }
-      return error.message
+      return normalizeErrorText(error.message)
     }
     const detail = error.response?.data?.detail
-    if (typeof detail === 'string') return detail
+    if (typeof detail === 'string') return normalizeErrorText(detail)
     if (typeof detail === 'object' && detail !== null && 'message' in detail) {
       const message = (detail as { message?: unknown }).message
-      if (typeof message === 'string') return message
+      if (typeof message === 'string') return normalizeErrorText(message)
     }
     if (Array.isArray(detail)) return detail.map((d) => d.msg ?? d).join(', ')
     if (error.response.status >= 500) {
       return 'Server error. Check that PostgreSQL is running (Docker Desktop → docker compose up -d).'
     }
-    return error.message
+    return normalizeErrorText(error.message)
   }
-  if (error instanceof Error) return error.message
+  if (error instanceof Error) return normalizeErrorText(error.message)
   return 'An unexpected error occurred'
+}
+
+function normalizeErrorText(text: string): string {
+  const groqMatch = text.match(/Groq API error \(\d+\):\s*([\s\S]+)/)
+  if (groqMatch) {
+    const payload = groqMatch[1].trim()
+    try {
+      const parsed = JSON.parse(payload) as { error?: { message?: string }; message?: string }
+      const inner = parsed.error?.message ?? parsed.message
+      if (typeof inner === 'string' && inner.trim()) {
+        return inner.trim()
+      }
+    } catch {
+      // Keep readable fallback below
+    }
+  }
+  return text
 }

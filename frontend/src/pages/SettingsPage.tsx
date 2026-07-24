@@ -1,7 +1,12 @@
 import { useAuth } from '../contexts/AuthContext'
+import { getModelById, resolveActiveModelId } from '../config/availableModels'
+import { readUserPreferredModel } from '../utils/modelStorage'
 
 export function SettingsPage() {
   const { user } = useAuth()
+  const activeModel = getModelById(
+    resolveActiveModelId(null, user?.preferred_llm_model ?? readUserPreferredModel()),
+  )
 
   return (
     <div className="h-full overflow-y-auto">
@@ -31,12 +36,16 @@ export function SettingsPage() {
               AI Model
             </h2>
             <div className="mt-4 flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50">
-                <span className="text-sm">⚡</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950/50">
+                <span className="text-sm">{activeModel?.icon ?? '⭐'}</span>
               </div>
               <div>
-                <p className="text-sm font-medium text-zinc-900">openai/gpt-oss-120b</p>
-                <p className="text-[12px] text-zinc-500">Powered by Groq · Ultra-fast inference</p>
+                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                  {activeModel?.name ?? 'GPT-OSS 120B'}
+                </p>
+                <p className="text-[12px] text-zinc-500 dark:text-zinc-400">
+                  Default for new projects · change per chat from the project header
+                </p>
               </div>
             </div>
           </section>

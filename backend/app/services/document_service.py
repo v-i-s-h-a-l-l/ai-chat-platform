@@ -9,6 +9,7 @@ from app.providers.impl.qdrant_store import get_vector_store
 from app.providers.types import DocumentStatus
 from app.repositories.document_chunk_repository import DocumentChunkRepository
 from app.repositories.document_repository import DocumentRepository
+from app.repositories.project_repository import ProjectRepository
 from app.services.ingestion_errors import IngestionQueueUnavailableError
 from app.services.ingestion_queue import enqueue_document_ingestion
 from app.services.project_service import ProjectService
@@ -38,6 +39,12 @@ class DocumentService:
                 await enqueue_document_ingestion(doc.id)
             except IngestionQueueUnavailableError:
                 logger.error("Cannot re-queue stale document %s — queue unavailable", doc.id)
+                DocumentRepository.update_status(
+                    db,
+                    doc.id,
+                    DocumentStatus.FAILED.value,
+                    error_message="Ingestion queue unavailable — start Redis and the worker, then reprocess",
+                )
 
     @staticmethod
     async def list_documents_with_recovery(
@@ -117,11 +124,19 @@ class DocumentService:
         if doc is None:
             raise ValueError("Document not found")
 
+        was_active = ProjectRepository.get_active_document_id(db, project_id) == document_id
+
         storage = FileStorage()
         await storage.delete(doc.storage_path)
         await get_vector_store().delete_document(document_id)
         DocumentChunkRepository.delete_by_document(db, document_id)
         DocumentRepository.delete(db, doc)
+
+        if was_active:
+            latest = DocumentRepository.get_latest_ready(db, project_id)
+            ProjectRepository.set_active_document(
+                db, project_id, latest.id if latest else None
+            )
 
     @staticmethod
     async def reprocess_document(

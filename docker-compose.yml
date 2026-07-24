@@ -28,6 +28,49 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  api:
+    profiles: ["full"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chatbot_api
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/chatbot_db
+      REDIS_URL: redis://redis:6379
+      QDRANT_URL: http://qdrant:6333
+      SECRET_KEY: local-dev-secret-key-not-for-production
+      RAG_ENABLED: "true"
+    depends_on:
+      - postgres
+      - redis
+      - qdrant
+    volumes:
+      - ./backend/storage:/app/storage
+
+  worker:
+    profiles: ["full"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    container_name: chatbot_worker
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/chatbot_db
+      REDIS_URL: redis://redis:6379
+      QDRANT_URL: http://qdrant:6333
+      SECRET_KEY: local-dev-secret-key-not-for-production
+      INGESTION_MAX_JOBS: "3"
+      RAG_ENABLED: "true"
+    depends_on:
+      - postgres
+      - redis
+      - qdrant
+    volumes:
+      - ./backend/storage:/app/storage
+
 volumes:
   postgres_data:
   redis_data:

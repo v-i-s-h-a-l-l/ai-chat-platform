@@ -1,106 +1,191 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 
-const NEAR_BOTTOM_THRESHOLD = 100
+const NEAR_BOTTOM_PX = 80
+const SHOW_BUTTON_PX = 120
 
 interface UseChatAutoScrollOptions {
   containerRef: RefObject<HTMLElement | null>
   observeTargetRef: RefObject<HTMLElement | null>
+  bottomSentinelRef: RefObject<HTMLElement | null>
   messageCount: number
   streamingId: string | null
+}
+
+export interface ChatAutoScrollApi {
+  showScrollToBottom: boolean
+  newMessageCount: number
+  scrollToBottom: () => void
+}
+
+function distanceFromBottom(el: HTMLElement): number {
+  return el.scrollHeight - el.scrollTop - el.clientHeight
 }
 
 export function useChatAutoScroll({
   containerRef,
   observeTargetRef,
+  bottomSentinelRef,
   messageCount,
   streamingId,
-}: UseChatAutoScrollOptions) {
+}: UseChatAutoScrollOptions): ChatAutoScrollApi {
   const shouldAutoScrollRef = useRef(true)
   const prevMessageCountRef = useRef(messageCount)
   const prevStreamingIdRef = useRef<string | null>(streamingId)
-  const rafScrollRef = useRef<number | null>(null)
+  const newMessageCountRef = useRef(0)
+  const showRef = useRef(false)
 
-  function scheduleScroll(behavior: ScrollBehavior) {
-    const container = containerRef.current
-    if (!container || !shouldAutoScrollRef.current) return
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+  const [newMessageCount, setNewMessageCount] = useState(0)
 
-    if (rafScrollRef.current !== null) {
-      cancelAnimationFrame(rafScrollRef.current)
-    }
+  const setShow = useCallback((next: boolean) => {
+    if (showRef.current === next) return
+    showRef.current = next
+    setShowScrollToBottom(next)
+  }, [])
 
-    rafScrollRef.current = requestAnimationFrame(() => {
-      container.scrollTo({ top: container.scrollHeight, behavior })
-      rafScrollRef.current = null
-    })
-  }
-
-  useEffect(() => {
+  const syncUi = useCallback(() => {
     const container = containerRef.current
     if (!container) return
 
+    const scrollTop = container.scrollTop
+    const scrollHeight = container.scrollHeight
+    const clientHeight = container.clientHeight
+    const distance = scrollHeight - scrollTop - clientHeight
+    const scrollable = scrollHeight > clientHeight + 1
+    const show = scrollable && distance > SHOW_BUTTON_PX
+
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log('[scroll-to-bottom]', {
+        scrollTop,
+        scrollHeight,
+        clientHeight,
+        distanceFromBottom: distance,
+        scrollable,
+        showButton: show,
+        stickToBottom: shouldAutoScrollRef.current,
+      })
+    }
+
+    setShow(show)
+
+    if (distance <= NEAR_BOTTOM_PX) {
+      shouldAutoScrollRef.current = true
+      if (newMessageCountRef.current !== 0) {
+        newMessageCountRef.current = 0
+        setNewMessageCount(0)
+      }
+    }
+  }, [containerRef, setShow])
+
+  const scrollToBottom = useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    shouldAutoScrollRef.current = true
+    newMessageCountRef.current = 0
+    setNewMessageCount(0)
+    setShow(false)
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth',
+    })
+  }, [containerRef, setShow])
+
+  const followBottom = useCallback(
+    (behavior: ScrollBehavior) => {
+      const container = containerRef.current
+      if (!container || !shouldAutoScrollRef.current) return
+      container.scrollTo({ top: container.scrollHeight, behavior })
+    },
+    [containerRef],
+  )
+
+  useLayoutEffect(() => {
+    const container = containerRef.current
+    const sentinel = bottomSentinelRef.current
+    if (!container) {
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn('[scroll-to-bottom] scroll container ref is null')
+      }
+      return
+    }
+
     const scrollEl = container
-    let lastScrollTop = scrollEl.scrollTop
 
     function onScroll() {
-      const distanceFromBottom =
-        scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight
-
-      if (
-        scrollEl.scrollTop < lastScrollTop &&
-        distanceFromBottom > NEAR_BOTTOM_THRESHOLD
-      ) {
-        shouldAutoScrollRef.current = false
-      }
-
-      if (distanceFromBottom <= NEAR_BOTTOM_THRESHOLD) {
-        shouldAutoScrollRef.current = true
-      }
-
-      lastScrollTop = scrollEl.scrollTop
+      const distance = distanceFromBottom(scrollEl)
+      shouldAutoScrollRef.current = distance <= NEAR_BOTTOM_PX
+      syncUi()
     }
 
     scrollEl.addEventListener('scroll', onScroll, { passive: true })
-    return () => scrollEl.removeEventListener('scroll', onScroll)
-  }, [containerRef])
+
+    let io: IntersectionObserver | undefined
+    if (sentinel) {
+      io = new IntersectionObserver(
+        () => syncUi(),
+        {
+          root: container,
+          threshold: 0,
+          rootMargin: `0px 0px -${SHOW_BUTTON_PX}px 0px`,
+        },
+      )
+      io.observe(sentinel)
+    }
+
+    const ro = new ResizeObserver(() => {
+      if (shouldAutoScrollRef.current) {
+        followBottom('auto')
+      }
+      syncUi()
+    })
+    ro.observe(container)
+    if (observeTargetRef.current) {
+      ro.observe(observeTargetRef.current)
+    }
+
+    syncUi()
+
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log('[scroll-to-bottom] listener attached', {
+        clientHeight: container.clientHeight,
+        scrollHeight: container.scrollHeight,
+      })
+    }
+
+    return () => {
+      scrollEl.removeEventListener('scroll', onScroll)
+      io?.disconnect()
+      ro.disconnect()
+    }
+  }, [containerRef, bottomSentinelRef, observeTargetRef, syncUi, followBottom])
 
   useEffect(() => {
-    const newMessages = messageCount > prevMessageCountRef.current
     const streamStarted = Boolean(streamingId && streamingId !== prevStreamingIdRef.current)
+    const added = messageCount - prevMessageCountRef.current
 
-    if (newMessages || streamStarted) {
+    if (streamStarted) {
       shouldAutoScrollRef.current = true
-      scheduleScroll('smooth')
+      newMessageCountRef.current = 0
+      setNewMessageCount(0)
+      followBottom('smooth')
+    } else if (added > 0) {
+      if (shouldAutoScrollRef.current) {
+        followBottom('smooth')
+      } else {
+        newMessageCountRef.current += added
+        setNewMessageCount(newMessageCountRef.current)
+        syncUi()
+      }
     }
 
     prevMessageCountRef.current = messageCount
     prevStreamingIdRef.current = streamingId
-  }, [messageCount, streamingId])
+  }, [messageCount, streamingId, followBottom, syncUi])
 
-  useEffect(() => {
-    const container = containerRef.current
-    const target = observeTargetRef.current
-    if (!container || !target) return
-
-    const observer = new ResizeObserver(() => {
-      if (!shouldAutoScrollRef.current) return
-
-      const distanceFromBottom =
-        container.scrollHeight - container.scrollTop - container.clientHeight
-
-      if (distanceFromBottom <= NEAR_BOTTOM_THRESHOLD + 20) {
-        scheduleScroll('auto')
-      }
-    })
-
-    observer.observe(target)
-    return () => observer.disconnect()
-  }, [containerRef, observeTargetRef])
-
-  useEffect(() => {
-    return () => {
-      if (rafScrollRef.current !== null) {
-        cancelAnimationFrame(rafScrollRef.current)
-      }
-    }
-  }, [])
+  return { showScrollToBottom, newMessageCount, scrollToBottom }
 }

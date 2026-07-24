@@ -35,6 +35,77 @@ _STABLE_PATTERNS = re.compile(
 )
 
 
+_DOCUMENT_ACCESS_PATTERNS = re.compile(
+    r"\b("
+    r"can you read|can you see|can you now see|do you see|did you get|have you read|"
+    r"are you able to read|are you able to see|"
+    r"read the doc|read the file|read my doc|read my file|read this doc|read this file|"
+    r"see the doc|see the file|see my doc|see my upload|"
+    r"have the file|got the file|received the file|access the doc|access the file|"
+    r"can you access|did the upload work|is the file there|is it uploaded|"
+    r"now can you read|know see|still see|still can't see|still cannot see|"
+    r"document i uploaded|doc i uploaded|file i uploaded|pdf i uploaded|"
+    r"i uploaded (?:the |my |a |this )?(?:doc|document|file|pdf)|"
+    r"(?:doc|document|file|pdf) i uploaded|"
+    r"uploaded (?:the |my |this )?(?:doc|document|file|pdf)"
+    r")\b",
+    re.IGNORECASE,
+)
+
+_UPLOAD_SIGNAL = re.compile(
+    r"\b(uploaded|upload|my upload|the upload|i uploaded)\b",
+    re.IGNORECASE,
+)
+
+_DOC_FILE_SIGNAL = re.compile(
+    r"\b(documents?|docs?|files?|pdfs?|papers?)\b",
+    re.IGNORECASE,
+)
+
+_VISIBILITY_SIGNAL = re.compile(
+    r"\b("
+    r"see|read|access|visible|have it|got it|received|"
+    r"can you|do you|are you able|able to"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _normalize_query(text: str) -> str:
+    """Fix common typos so upload/visibility heuristics still match."""
+    normalized = text.lower()
+    normalized = re.sub(r"docu?ments?", "document", normalized)
+    normalized = re.sub(r"\bdocs?\b", "document", normalized)
+    normalized = re.sub(r"\bpdfs?\b", "pdf", normalized)
+    return normalized
+
+
+def is_document_access_query(question: str) -> bool:
+    """True when the user asks whether an uploaded document is visible/readable."""
+    text = question.strip()
+    if not text:
+        return False
+
+    if _DOCUMENT_ACCESS_PATTERNS.search(text):
+        return True
+
+    normalized = _normalize_query(text)
+    if normalized != text.lower() and _DOCUMENT_ACCESS_PATTERNS.search(normalized):
+        return True
+
+    has_upload = bool(_UPLOAD_SIGNAL.search(normalized))
+    has_doc = bool(_DOC_FILE_SIGNAL.search(normalized))
+    has_visibility = bool(_VISIBILITY_SIGNAL.search(normalized))
+
+    # "can you see the CPET document I uploaded" / typos like "docuiment"
+    if has_upload and (has_doc or has_visibility):
+        return True
+    if has_visibility and has_doc:
+        return True
+
+    return False
+
+
 def heuristic_question_nature(question: str) -> str | None:
     """
     Fast local classification for routing fallback decisions.
@@ -46,6 +117,10 @@ def heuristic_question_nature(question: str) -> str | None:
     """
     text = question.strip()
     if not text:
+        return "stable"
+
+    # Upload visibility checks are never dynamic external lookups.
+    if is_document_access_query(text):
         return "stable"
 
     is_dynamic = bool(_DYNAMIC_PATTERNS.search(text))

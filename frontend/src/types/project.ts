@@ -4,12 +4,21 @@ export interface Project {
   description: string
   system_prompt: string
   created_at: string
+  last_accessed_at: string | null
+  is_pinned: boolean
+  llm_model?: string | null
 }
 
 export interface ProjectCreate {
   name: string
   description: string
   system_prompt: string
+}
+
+export interface ProjectUpdate {
+  name?: string
+  is_pinned?: boolean
+  llm_model?: string | null
 }
 
 export interface PromptOptimizationRequest {

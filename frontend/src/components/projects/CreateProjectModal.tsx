@@ -3,6 +3,7 @@ import { getErrorMessage } from '../../api/client'
 import { projectApi } from '../../api/projects'
 import type { PromptOptimizationResponse } from '../../types/project'
 import { Button } from '../ui/Button'
+import { InlineError } from '../ui/InlineError'
 import { Input } from '../ui/Input'
 
 interface CreateProjectModalProps {
@@ -110,7 +111,7 @@ export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectMod
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm" onClick={onClose} />
       <div
-        className={`relative w-full animate-fade-in rounded-2xl border border-zinc-200 bg-white shadow-2xl ${
+        className={`relative w-full min-w-0 overflow-hidden animate-fade-in rounded-2xl border border-zinc-200 bg-white shadow-2xl ${
           step === 'review' ? 'max-w-3xl' : 'max-w-lg'
         }`}
       >
@@ -120,18 +121,14 @@ export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectMod
           </h2>
           <p className="mt-0.5 text-[13px] text-zinc-500">
             {step === 'form'
-              ? "Configure your chatbot's name, description, and behavior."
+              ? "Configure your project's name, description, and YelloBot behavior."
               : 'We proofread your prompt for clarity. Choose which version to use.'}
           </p>
         </div>
 
         {step === 'form' ? (
-          <form onSubmit={handleFormSubmit} className="space-y-4 p-6">
-            {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
-                {error}
-              </div>
-            )}
+          <form onSubmit={handleFormSubmit} className="min-w-0 space-y-4 p-6">
+            {error && <InlineError message={error} />}
 
             <Input
               label="Project Name"
@@ -143,7 +140,7 @@ export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectMod
             <div className="space-y-1.5">
               <label className="block text-[13px] font-medium text-zinc-700">Description</label>
               <textarea
-                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[13px] text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-violet-400 focus:ring-2 focus:ring-violet-500/15"
+                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[13px] text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/15"
                 rows={2}
                 placeholder="Brief description of this project"
                 value={description}
@@ -157,7 +154,7 @@ export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectMod
                 <span className="ml-1.5 font-normal text-zinc-400">(defines AI behavior)</span>
               </label>
               <textarea
-                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[13px] text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-violet-400 focus:ring-2 focus:ring-violet-500/15"
+                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[13px] text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/15"
                 rows={4}
                 placeholder="You are a helpful coding assistant. Provide clear, concise answers with examples..."
                 value={systemPrompt}
@@ -176,12 +173,8 @@ export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectMod
           </form>
         ) : (
           optimization && (
-            <div className="space-y-4 p-6">
-              {error && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
-                  {error}
-                </div>
-              )}
+            <div className="min-w-0 space-y-4 p-6">
+              {error && <InlineError message={error} />}
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1.5">
@@ -192,7 +185,7 @@ export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectMod
                 </div>
                 <div className="space-y-1.5">
                   <h3 className="text-[13px] font-semibold text-zinc-800">Improved Prompt</h3>
-                  <div className="max-h-48 overflow-y-auto rounded-xl border border-violet-200 bg-violet-50/50 px-4 py-3 text-[13px] leading-relaxed whitespace-pre-wrap text-zinc-700">
+                  <div className="max-h-48 overflow-y-auto rounded-xl border border-amber-200 bg-amber-50/50 px-4 py-3 text-[13px] leading-relaxed whitespace-pre-wrap text-zinc-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-zinc-300">
                     {optimization.improved_prompt}
                   </div>
                 </div>

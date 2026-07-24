@@ -1,5 +1,5 @@
 import { lazy, memo, Suspense, useMemo } from 'react'
-import { SparklesIcon } from '../icons/NavIcons'
+import { YelloBotLogo } from '../brand/YelloBotLogo'
 import { prepareContentForDisplay } from '../../utils/sourceSectionDisplay'
 import { MessageActions } from './MessageActions'
 import { TypingIndicator } from './TypingIndicator'
@@ -43,10 +43,10 @@ export const MessageBubble = memo(function MessageBubble({
   return (
     <div className={`animate-fade-in flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       <div
-        className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl text-xs font-bold ${
+        className={`mt-0.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-xs font-bold ${
           isUser
-            ? 'bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-sm shadow-violet-500/30'
-            : 'border border-zinc-200 bg-white text-violet-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-violet-400'
+            ? 'bg-brand text-zinc-900 shadow-sm shadow-amber-500/20'
+            : 'border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800'
         }`}
       >
         {isUser ? (
@@ -54,7 +54,7 @@ export const MessageBubble = memo(function MessageBubble({
             <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         ) : (
-          <SparklesIcon className="h-3.5 w-3.5" />
+          <YelloBotLogo size="sm" compact />
         )}
       </div>
 
@@ -75,7 +75,7 @@ export const MessageBubble = memo(function MessageBubble({
         <div
           className={`${
             isUser
-              ? 'rounded-2xl rounded-tr-md bg-gradient-to-br from-violet-600 to-violet-700 px-4 py-3 text-white shadow-md shadow-violet-600/15'
+              ? 'rounded-2xl rounded-tr-md bg-brand px-4 py-3 text-zinc-900 shadow-md shadow-amber-500/15'
               : 'rounded-2xl rounded-tl-md border border-zinc-200/80 bg-white px-6 py-4 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900'
           }`}
         >
@@ -86,7 +86,7 @@ export const MessageBubble = memo(function MessageBubble({
           ) : isStreaming ? (
             <p className="text-[0.9375rem] leading-relaxed whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">
               {displayContent}
-              <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-violet-500 align-middle" />
+              <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-amber-600 align-middle dark:bg-amber-400" />
             </p>
           ) : (
             <Suspense

@@ -5,6 +5,7 @@ import type {
   ChatResponse,
   Project,
   ProjectCreate,
+  ProjectUpdate,
   PromptOptimizationRequest,
   PromptOptimizationResponse,
 } from '../types/project'
@@ -22,6 +23,14 @@ export const projectApi = {
     return api.post<Project>('/projects', data).then((res) => res.data)
   },
 
+  update(id: string, data: ProjectUpdate): Promise<Project> {
+    return api.patch<Project>(`/projects/${id}`, data).then((res) => res.data)
+  },
+
+  duplicate(id: string): Promise<Project> {
+    return api.post<Project>(`/projects/${id}/duplicate`).then((res) => res.data)
+  },
+
   optimizePrompt(data: PromptOptimizationRequest): Promise<PromptOptimizationResponse> {
     return api
       .post<PromptOptimizationResponse>('/projects/optimize-prompt', data)
@@ -36,9 +45,9 @@ export const projectApi = {
     return api.get<ChatMessage[]>(`/projects/${id}/messages`).then((res) => res.data)
   },
 
-  sendMessage(id: string, message: string): Promise<ChatResponse> {
+  sendMessage(id: string, message: string, model: string): Promise<ChatResponse> {
     return api
-      .post<ChatResponse>(`/projects/${id}/chat`, { message })
+      .post<ChatResponse>(`/projects/${id}/chat`, { message, model })
       .then((res) => res.data)
   },
 

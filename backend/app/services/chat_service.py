@@ -15,6 +15,7 @@ import app.guardrails as guardrails
 from app.guardrails import GuardrailViolationError
 from app.models.chat_message import ChatMessage
 from app.models.project import Project
+from app.models.user import User
 from app.observability import metrics, span
 from app.read_models.message_read import MessageReadModel
 from app.repositories.chat_repository import ChatRepository
@@ -23,6 +24,7 @@ from app.services.chat_events import ChatStreamEvent, DoneEvent, ErrorEvent, Met
 from app.services.coding_intent import CodingRequestContext, classify_coding_request
 from app.services.llm_provider import LLMProvider
 from app.services.message_builder import build_llm_messages, build_routed_llm_messages
+from app.services.model_resolver import resolve_chat_model
 from app.services.project_service import ProjectService
 from app.services.response_formatter import format_assistant_response
 from app.services.response_router import ResponseRoute, append_sources_section, resolve_response_route
@@ -54,6 +56,7 @@ class PreparedChatContext:
     route: ResponseRoute | None
     web_search_used: bool
     documents_used: bool
+    retrieval_degraded: bool = False
 
 
 class ChatService:
@@ -92,21 +95,42 @@ class ChatService:
             project_id=str(project_id),
         ):
             if settings.response_routing_enabled:
-                doc_chunks, _documents_flag = await resolve_rag_context(
+                rag = await resolve_rag_context(
                     project_id, content, history, provider
                 )
-                route = await resolve_response_route(provider, content, doc_chunks)
+                route = await resolve_response_route(provider, content, rag.chunks)
                 messages = build_routed_llm_messages(
-                    project.system_prompt, history, content, route, coding_context
+                    project.system_prompt,
+                    history,
+                    content,
+                    route,
+                    coding_context,
+                    project.description,
+                    retrieval_degraded=rag.retrieval_degraded,
+                )
+                context_chars = sum(len(c.content) for c in rag.chunks)
+                prompt_chars = sum(len(m["content"]) for m in messages)
+                logger.info(
+                    "LLM prompt: project=%s active_doc=%s chunks=%d chunk_ids=%s "
+                    "context_chars=%d prompt_chars=%d docs_used=%s web=%s routing=on",
+                    project_id,
+                    rag.active_document_id,
+                    len(rag.chunks),
+                    rag.chunk_ids[:8],
+                    context_chars,
+                    prompt_chars,
+                    route.documents_used,
+                    route.web_search_used,
                 )
                 return PreparedChatContext(
                     messages=messages,
                     route=route,
                     web_search_used=route.web_search_used,
                     documents_used=route.documents_used,
+                    retrieval_degraded=rag.retrieval_degraded,
                 )
 
-            (needs_search, search_results), (doc_chunks, documents_used) = await asyncio.gather(
+            (needs_search, search_results), rag = await asyncio.gather(
                 resolve_search(provider, content),
                 resolve_rag_context(project_id, content, history, provider),
             )
@@ -115,30 +139,54 @@ class ChatService:
                 history,
                 content,
                 search_results,
-                doc_chunks,
+                rag.chunks,
                 coding_context,
+                project.description,
+                retrieval_degraded=rag.retrieval_degraded,
+            )
+            context_chars = sum(len(c.content) for c in rag.chunks)
+            prompt_chars = sum(len(m["content"]) for m in messages)
+            logger.info(
+                "LLM prompt: project=%s active_doc=%s chunks=%d chunk_ids=%s "
+                "context_chars=%d prompt_chars=%d docs_used=%s routing=off",
+                project_id,
+                rag.active_document_id,
+                len(rag.chunks),
+                rag.chunk_ids[:8],
+                context_chars,
+                prompt_chars,
+                rag.has_chunks,
             )
             return PreparedChatContext(
                 messages=messages,
                 route=None,
                 web_search_used=needs_search and len(search_results) > 0,
-                documents_used=documents_used,
+                documents_used=rag.has_chunks,
+                retrieval_degraded=rag.retrieval_degraded,
             )
 
     @staticmethod
     async def send_message(
-        project_id: UUID, user_id: UUID, content: str, provider: LLMProvider
+        project_id: UUID,
+        user_id: UUID,
+        content: str,
+        provider: LLMProvider,
+        *,
+        request_model: str | None = None,
     ) -> ChatReply:
         if settings.guardrails_enabled:
             guardrails.check_chat(content)
 
-        project, history = await ChatService._load_context(project_id, user_id)
+        project, user, history = await ChatService._load_context(project_id, user_id)
+        llm_model = resolve_chat_model(
+            request_model=request_model, project=project, user=user
+        )
         coding_context = classify_coding_request(content)
         prepared = await ChatService._prepare_llm_context(
             project, history, content, provider, coding_context, project_id
         )
 
-        raw_content = await provider.complete(prepared.messages)
+        raw_content = await provider.complete(prepared.messages, model=llm_model)
         assistant_content = format_assistant_response(raw_content)
         if prepared.route is not None:
             assistant_content = append_sources_section(assistant_content, prepared.route)
@@ -161,14 +209,22 @@ class ChatService:
 
     @staticmethod
     async def stream_message(
-        project_id: UUID, user_id: UUID, content: str, provider: LLMProvider
+        project_id: UUID,
+        user_id: UUID,
+        content: str,
+        provider: LLMProvider,
+        *,
+        request_model: str | None = None,
     ) -> AsyncGenerator[ChatStreamEvent, None]:
         """Yield domain events. The route layer serializes these to SSE."""
         try:
             if settings.guardrails_enabled:
                 guardrails.check_chat(content)
 
-            project, history = await ChatService._load_context(project_id, user_id)
+            project, user, history = await ChatService._load_context(project_id, user_id)
+            llm_model = resolve_chat_model(
+                request_model=request_model, project=project, user=user
+            )
             coding_context = classify_coding_request(content)
 
             t0 = time.perf_counter()
@@ -180,11 +236,12 @@ class ChatService:
                 routing_enabled=str(settings.response_routing_enabled).lower()
             ).observe(context_ms / 1000.0)
             logger.info(
-                "Context phase: %.0fms (web=%s, docs=%s, routing=%s)",
+                "Context phase: %.0fms (web=%s, docs=%s, routing=%s, model=%s)",
                 context_ms,
                 prepared.web_search_used,
                 prepared.documents_used,
                 settings.response_routing_enabled,
+                llm_model,
             )
 
             user_message = await ChatService._persist_message(project_id, "user", content)
@@ -192,12 +249,13 @@ class ChatService:
                 user_message=user_message,
                 web_search_used=prepared.web_search_used,
                 documents_used=prepared.documents_used,
+                retrieval_degraded=prepared.retrieval_degraded,
             )
 
             full_content: list[str] = []
             first_token_recorded = False
             try:
-                async for token in provider.stream(prepared.messages):
+                async for token in provider.stream(prepared.messages, model=llm_model):
                     if not first_token_recorded:
                         metrics.CHAT_TTFT.observe(
                             (time.perf_counter() - t0)
@@ -226,6 +284,7 @@ class ChatService:
                     assistant_message=assistant_message,
                     web_search_used=prepared.web_search_used,
                     documents_used=prepared.documents_used,
+                    retrieval_degraded=prepared.retrieval_degraded,
                 )
             except _DISCONNECT_EXCEPTIONS:
                 partial_raw = "".join(full_content).strip()
@@ -264,16 +323,22 @@ class ChatService:
     # never held across the LLM call/stream.
 
     @staticmethod
-    async def _load_context(project_id: UUID, user_id: UUID) -> tuple[Project, list[ChatMessage]]:
-        def _work() -> tuple[Project, list[ChatMessage]]:
+    async def _load_context(
+        project_id: UUID, user_id: UUID
+    ) -> tuple[Project, User, list[ChatMessage]]:
+        def _work() -> tuple[Project, User, list[ChatMessage]]:
             db = SessionLocal()
             try:
                 project = ProjectService.get_project(db, project_id, user_id)
+                user = db.query(User).filter(User.id == user_id).first()
+                if user is None:
+                    raise ValueError("User not found")
                 history = ChatRepository.get_recent(db, project_id)
                 db.expunge(project)
+                db.expunge(user)
                 for message in history:
                     db.expunge(message)
-                return project, history
+                return project, user, history
             finally:
                 db.close()
 

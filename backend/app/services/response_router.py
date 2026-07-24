@@ -13,13 +13,15 @@ from enum import Enum
 
 from app.providers.types import RetrievedChunk
 from app.services.llm_provider import LLMProvider
-from app.services.routing_heuristics import heuristic_question_nature
+from app.services.query_classifier import is_document_intent_query
+from app.services.routing_heuristics import heuristic_question_nature, is_document_access_query
 from app.services.search_service import SearchResult, SearchService
 
 logger = logging.getLogger(__name__)
 
 MAX_CHUNKS_FOR_ASSESSMENT = 5
 MAX_CHUNK_CHARS = 600
+HIGH_CONFIDENCE_CHUNK_SCORE = 0.72
 
 COVERAGE_PROMPT = """You are evaluating whether uploaded document excerpts can answer a user question.
 
@@ -70,6 +72,7 @@ class ResponseRoute:
     web_search_used: bool
     general_knowledge_used: bool
     web_search_unavailable: bool = False
+    document_access: bool = False
 
 
 async def resolve_response_route(
@@ -79,10 +82,76 @@ async def resolve_response_route(
 ) -> ResponseRoute:
     """Choose the best information sources after retrieval.
 
-    Coverage assessment runs first. When coverage is not FULL, nature
-    classification and (for DYNAMIC) web search are overlapped where possible.
+    Document-intent questions always use retrieved chunks when available.
     """
+    doc_intent = is_document_intent_query(question)
+    document_access = is_document_access_query(question)
+
+    if doc_chunks and (doc_intent or document_access):
+        logger.info(
+            "Response route: document-intent fast path (chunks=%d access=%s)",
+            len(doc_chunks),
+            document_access,
+        )
+        return ResponseRoute(
+            coverage=DocumentCoverage.FULL,
+            doc_chunks=doc_chunks,
+            search_results=[],
+            documents_used=True,
+            web_search_used=False,
+            general_knowledge_used=False,
+            document_access=document_access,
+        )
+
+    if doc_intent and not doc_chunks:
+        logger.warning(
+            "Response route: document intent but no chunks — skipping web/general fallback"
+        )
+        return ResponseRoute(
+            coverage=DocumentCoverage.NONE,
+            doc_chunks=[],
+            search_results=[],
+            documents_used=False,
+            web_search_used=False,
+            general_knowledge_used=False,
+            document_access=document_access,
+        )
+
+    if doc_chunks:
+        top_score = max(chunk.score for chunk in doc_chunks)
+        if top_score >= HIGH_CONFIDENCE_CHUNK_SCORE:
+            logger.info(
+                "Response route: high-confidence retrieval fast path (score=%.2f, chunks=%d)",
+                top_score,
+                len(doc_chunks),
+            )
+            return ResponseRoute(
+                coverage=DocumentCoverage.FULL,
+                doc_chunks=doc_chunks,
+                search_results=[],
+                documents_used=True,
+                web_search_used=False,
+                general_knowledge_used=False,
+            )
+
     coverage = await _assess_document_coverage(provider, question, doc_chunks)
+
+    # Meta upload/visibility questions — never drop docs for coverage NONE + web search.
+    if doc_chunks and is_document_access_query(question):
+        logger.info(
+            "Response route: document access after coverage=%s (chunks=%d)",
+            coverage.value,
+            len(doc_chunks),
+        )
+        return ResponseRoute(
+            coverage=DocumentCoverage.FULL,
+            doc_chunks=doc_chunks,
+            search_results=[],
+            documents_used=True,
+            web_search_used=False,
+            general_knowledge_used=False,
+            document_access=True,
+        )
 
     if coverage == DocumentCoverage.FULL:
         logger.info("Response route: documents only (coverage=full, chunks=%d)", len(doc_chunks))
@@ -128,7 +197,9 @@ async def resolve_response_route(
                 pass
         general_knowledge_used = True
 
-    use_doc_chunks = doc_chunks if coverage == DocumentCoverage.PARTIAL else []
+    use_doc_chunks = doc_chunks if coverage in (DocumentCoverage.FULL, DocumentCoverage.PARTIAL) else []
+    if doc_chunks and doc_intent:
+        use_doc_chunks = doc_chunks
     documents_used = bool(use_doc_chunks)
 
     logger.info(
@@ -190,6 +261,8 @@ async def _resolve_question_nature(
     if coverage == DocumentCoverage.PARTIAL:
         if heuristic == "dynamic":
             return QuestionNature.DYNAMIC
+        if heuristic == "stable":
+            return QuestionNature.STABLE
         try:
             decision = await provider.fast_complete(
                 [{"role": "user", "content": NATURE_PROMPT.format(question=question)}],

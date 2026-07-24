@@ -22,6 +22,7 @@ def serialize_chat_event(event: ChatStreamEvent) -> str:
                 "user_message": serialize_message(event.user_message).model_dump(mode="json"),
                 "web_search_used": event.web_search_used,
                 "documents_used": event.documents_used,
+                "retrieval_degraded": event.retrieval_degraded,
             },
         )
     if isinstance(event, TokenEvent):
@@ -35,6 +36,7 @@ def serialize_chat_event(event: ChatStreamEvent) -> str:
                 ),
                 "web_search_used": event.web_search_used,
                 "documents_used": event.documents_used,
+                "retrieval_degraded": event.retrieval_degraded,
             },
         )
     if isinstance(event, ErrorEvent):

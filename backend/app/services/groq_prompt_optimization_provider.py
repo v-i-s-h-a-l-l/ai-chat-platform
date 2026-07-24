@@ -14,7 +14,7 @@ from app.services.prompt_optimization_provider import (
 
 logger = logging.getLogger(__name__)
 
-_OPTIMIZER_SYSTEM = """You are a prompt safety reviewer and proofreader for an AI chatbot platform.
+_OPTIMIZER_SYSTEM = """You are a prompt safety reviewer and proofreader for the YelloBot AI platform.
 
 You MUST return ONLY valid JSON (no markdown fences, no commentary) matching this schema:
 

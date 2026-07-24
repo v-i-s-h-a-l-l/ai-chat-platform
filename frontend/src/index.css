@@ -15,12 +15,15 @@
   --color-muted: #71717a;
   --color-foreground: #18181b;
 
-  --color-accent-50: #f5f3ff;
-  --color-accent-100: #ede9fe;
-  --color-accent-200: #ddd6fe;
-  --color-accent-500: #8b5cf6;
-  --color-accent-600: #7c3aed;
-  --color-accent-700: #6d28d9;
+  --color-brand: #f5b800;
+  --color-brand-hover: #e5a800;
+  --color-brand-dark: #ca9600;
+  --color-accent-50: #fffbeb;
+  --color-accent-100: #fef3c7;
+  --color-accent-200: #fde68a;
+  --color-accent-500: #f5b800;
+  --color-accent-600: #e5a800;
+  --color-accent-700: #ca9600;
 }
 
 .dark {
@@ -62,7 +65,7 @@ body {
   @apply my-2.5 first:mt-0 last:mb-0;
 }
 .chat-markdown .inline-code {
-  @apply rounded-md bg-zinc-100 px-1.5 py-0.5 font-mono text-[0.8125rem] text-violet-700 dark:bg-zinc-800 dark:text-violet-300;
+  @apply rounded-md bg-zinc-100 px-1.5 py-0.5 font-mono text-[0.8125rem] text-amber-800 dark:bg-zinc-800 dark:text-amber-300;
 }
 .chat-markdown ul,
 .chat-markdown ol {
@@ -83,10 +86,10 @@ body {
 .chat-markdown h2 { @apply text-base; }
 .chat-markdown h3 { @apply text-sm; }
 .chat-markdown a {
-  @apply text-violet-600 underline decoration-violet-300 underline-offset-2 hover:text-violet-700 dark:text-violet-400 dark:decoration-violet-600 dark:hover:text-violet-300;
+  @apply text-amber-700 underline decoration-amber-300 underline-offset-2 hover:text-amber-800 dark:text-amber-400 dark:decoration-amber-600 dark:hover:text-amber-300;
 }
 .chat-markdown blockquote {
-  @apply my-3 border-l-2 border-violet-300 pl-4 text-zinc-600 italic dark:border-violet-600 dark:text-zinc-400;
+  @apply my-3 border-l-2 border-amber-300 pl-4 text-zinc-600 italic dark:border-amber-600 dark:text-zinc-400;
 }
 .chat-markdown strong {
   @apply font-semibold text-zinc-900 dark:text-zinc-100;

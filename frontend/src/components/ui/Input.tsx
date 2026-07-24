@@ -15,7 +15,7 @@ export function Input({ label, error, id, className = '', ...props }: InputProps
       </label>
       <input
         id={inputId}
-        className={`w-full rounded-xl border bg-white px-4 py-2.5 text-[13px] text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-violet-400 focus:ring-2 focus:ring-violet-500/15 ${
+        className={`w-full rounded-xl border bg-white px-4 py-2.5 text-[13px] text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/15 ${
           error ? 'border-red-300' : 'border-zinc-200'
         } ${className}`}
         {...props}

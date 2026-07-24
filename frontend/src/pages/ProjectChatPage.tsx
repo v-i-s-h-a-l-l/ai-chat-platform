@@ -1,22 +1,25 @@
 import { Link, useParams } from 'react-router-dom'
 import { ChatWindow } from '../components/chat/ChatWindow'
+import { ModelSelector } from '../components/chat/ModelSelector'
 import { UploadConfirmationModal } from '../components/chat/UploadConfirmationModal'
-import { ArrowLeftIcon, SparklesIcon } from '../components/icons/NavIcons'
+import { ArrowLeftIcon } from '../components/icons/NavIcons'
 import { useChatStream } from '../hooks/useChatStream'
 import { useProjectDocuments } from '../hooks/useProjectDocuments'
 
 export function ProjectChatPage() {
   const { id } = useParams<{ id: string }>()
-  const { project, messages, loading, sending, streamingId, error, sendMessage, stopGeneration } =
+  const { project, messages, loading, sending, streamingId, error, selectedModelId, selectModel, sendMessage, stopGeneration } =
     useChatStream(id)
   const {
     documents,
     uploading: documentsUploading,
+    uploadQueue,
     deletingId: deletingDocumentId,
     error: documentsError,
     setError: setDocumentsError,
     pendingUpload,
-    uploadFiles,
+    addFiles,
+    removeQueuedFile,
     confirmPendingUpload,
     cancelPendingUpload,
     deleteDocument,
@@ -25,7 +28,7 @@ export function ProjectChatPage() {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600" />
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-amber-200 border-t-brand" />
       </div>
     )
   }
@@ -34,7 +37,7 @@ export function ProjectChatPage() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
         <p className="text-sm text-red-600">{error}</p>
-        <Link to="/home" className="text-sm font-medium text-violet-600 hover:text-violet-700">
+        <Link to="/home" className="text-sm font-medium text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300">
           ← Back to projects
         </Link>
       </div>
@@ -44,7 +47,7 @@ export function ProjectChatPage() {
   if (!project) return null
 
   return (
-    <div className="flex h-full flex-col bg-zinc-50/50 dark:bg-zinc-950">
+    <div className="flex h-full min-h-0 flex-col bg-zinc-50/50 dark:bg-zinc-950">
       <div className="flex h-[60px] flex-shrink-0 items-center gap-4 border-b border-zinc-200/80 bg-white px-5 dark:border-zinc-800 dark:bg-zinc-900">
         <Link
           to="/home"
@@ -57,9 +60,6 @@ export function ProjectChatPage() {
         <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
 
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600">
-            <SparklesIcon className="h-3.5 w-3.5 text-white" />
-          </div>
           <div className="min-w-0">
             <h1 className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">{project.name}</h1>
             {project.system_prompt && (
@@ -68,10 +68,11 @@ export function ProjectChatPage() {
           </div>
         </div>
 
-        <div className="hidden items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 sm:flex dark:border-violet-800 dark:bg-violet-950">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          <span className="text-[11px] font-medium text-violet-700 dark:text-violet-300">gpt-oss-120b</span>
-        </div>
+        <ModelSelector
+          selectedModelId={selectedModelId}
+          onSelect={(modelId) => void selectModel(modelId)}
+          disabled={sending}
+        />
       </div>
 
       {(error || documentsError) && (
@@ -91,7 +92,7 @@ export function ProjectChatPage() {
         </div>
       )}
 
-      <div className="flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <ChatWindow
           messages={messages}
           projectId={project.id}
@@ -102,8 +103,10 @@ export function ProjectChatPage() {
           projectName={project.name}
           documents={documents}
           documentsUploading={documentsUploading}
+          uploadQueue={uploadQueue}
           deletingDocumentId={deletingDocumentId}
-          onDocumentUpload={uploadFiles}
+          onDocumentUpload={addFiles}
+          onRemoveQueuedFile={removeQueuedFile}
           onDocumentDelete={deleteDocument}
         />
       </div>

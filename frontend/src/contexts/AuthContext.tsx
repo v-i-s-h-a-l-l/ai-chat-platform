@@ -15,6 +15,7 @@ interface AuthContextValue {
   loading: boolean
   refreshSession: () => Promise<User | null>
   clearSession: () => void
+  setUser: (user: User | null) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -43,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshSession])
 
   const value = useMemo(
-    () => ({ user, loading, refreshSession, clearSession }),
+    () => ({ user, loading, refreshSession, clearSession, setUser }),
     [user, loading, refreshSession, clearSession],
   )
 

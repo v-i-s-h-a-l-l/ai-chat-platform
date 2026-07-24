@@ -1,7 +1,7 @@
 # Generates two random secrets for Railway production env.
 # Run: .\deploy\generate-secrets.ps1
 
-Write-Host "Copy these into Railway Variables:" -ForegroundColor Cyan
+Write-Host "Copy these into Render Environment (yellobot-api):" -ForegroundColor Cyan
 Write-Host ""
 
 function New-Secret {

@@ -12,10 +12,12 @@ const ProjectChatPage = lazy(() =>
   import('./pages/ProjectChatPage').then((m) => ({ default: m.ProjectChatPage })),
 )
 
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
+
 function PageFallback() {
   return (
     <div className="flex h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600" />
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-200 border-t-brand" />
     </div>
   )
 }
@@ -38,6 +40,8 @@ export default function App() {
             <Route path="/projects/:id" element={<ProjectChatPage />} />
           </Route>
         </Route>
+
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   )

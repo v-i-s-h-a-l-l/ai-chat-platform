@@ -91,7 +91,7 @@ export const MessageActions = memo(function MessageActions({
               setOpen((value) => !value)
             }}
             disabled={exporting !== null}
-            className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium text-violet-600 transition hover:bg-violet-50 disabled:opacity-60 dark:text-violet-400 dark:hover:bg-violet-950/40"
+            className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium text-amber-700 transition hover:bg-amber-50 disabled:opacity-60 dark:text-amber-400 dark:hover:bg-amber-950/40"
           >
             {exporting ? `Exporting ${exportFormatLabel(exporting)}…` : 'Export ▼'}
           </button>

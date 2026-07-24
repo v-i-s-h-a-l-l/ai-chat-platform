@@ -35,7 +35,11 @@ class Document(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    project = relationship("Project", back_populates="documents")
+    project = relationship(
+        "Project",
+        back_populates="documents",
+        foreign_keys=[project_id],
+    )
     chunks = relationship(
         "DocumentChunk", back_populates="document", cascade="all, delete-orphan"
     )

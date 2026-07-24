@@ -49,6 +49,24 @@ class DocumentRepository:
         )
 
     @staticmethod
+    def list_ready_by_project(db: Session, project_id: UUID) -> list[Document]:
+        """Ready documents, newest first — used by conversation document resolver."""
+        return (
+            db.query(Document)
+            .filter(
+                Document.project_id == project_id,
+                Document.status == DocumentStatus.READY.value,
+            )
+            .order_by(Document.created_at.desc())
+            .all()
+        )
+
+    @staticmethod
+    def get_latest_ready(db: Session, project_id: UUID) -> Document | None:
+        docs = DocumentRepository.list_ready_by_project(db, project_id)
+        return docs[0] if docs else None
+
+    @staticmethod
     def update_status(
         db: Session,
         document_id: UUID,

@@ -29,9 +29,9 @@ def _dummy_chunk() -> RetrievedChunk:
 
 
 async def warmup_reranker() -> None:
-    """Load the cross-encoder reranker — the main cold-start cost on first RAG query."""
+    """Load the cross-encoder reranker — skipped when RERANK_ENABLED=false."""
     global _reranker_warmed
-    if not settings.rag_enabled or _reranker_warmed:
+    if not settings.rag_enabled or not settings.rerank_enabled or _reranker_warmed:
         return
 
     from app.providers.impl.bge_reranker import get_reranker
@@ -44,18 +44,19 @@ async def warmup_reranker() -> None:
 
 
 async def warmup_rag_models() -> None:
-    """Preload embedding + reranker models used by the retrieval pipeline."""
+    """Preload local embedding/reranker models when not using Hugging Face API."""
     global _warmed
     if not settings.rag_enabled or _warmed:
         return
 
-    from app.providers.impl.bge_embedding import get_embedding_provider
+    from app.providers.impl.embedding_factory import get_embedding_provider
 
     t0 = time.perf_counter()
     try:
-        await get_embedding_provider().embed_query("warmup")
+        if settings.embedding_provider.lower() == "local":
+            await get_embedding_provider().embed_query("warmup")
         await warmup_reranker()
         _warmed = True
-        logger.info("RAG models warmed up in %.0fms", (time.perf_counter() - t0) * 1000)
+        logger.info("RAG warmup finished in %.0fms", (time.perf_counter() - t0) * 1000)
     except Exception:
         logger.exception("RAG warmup failed")

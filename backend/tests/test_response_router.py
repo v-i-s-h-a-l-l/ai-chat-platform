@@ -12,7 +12,18 @@ from app.services.response_router import (
 )
 
 
-def _chunk(content: str = "Some document text about MathCo.") -> RetrievedChunk:
+@pytest.mark.asyncio
+async def test_high_confidence_chunks_skip_coverage_llm():
+    provider = FakeProvider(coverage="NONE")
+    chunks = [_chunk(score=0.95)]
+
+    route = await resolve_response_route(provider, "What is MathCo?", chunks)
+
+    assert route.coverage == DocumentCoverage.FULL
+    assert route.documents_used is True
+
+
+def _chunk(content: str = "Some document text about MathCo.", score: float = 0.9) -> RetrievedChunk:
     return RetrievedChunk(
         chunk_id=uuid4(),
         document_id=uuid4(),
@@ -22,7 +33,7 @@ def _chunk(content: str = "Some document text about MathCo.") -> RetrievedChunk:
         chunk_index=0,
         page_number=1,
         section_heading="Overview",
-        score=0.9,
+        score=score,
     )
 
 
@@ -100,9 +111,11 @@ async def test_partial_dynamic_uses_documents_and_web(mock_search):
         type("R", (), {"title": "T", "content": "Yellow.ai info", "url": "https://example.com"})()
     ]
     provider = FakeProvider(coverage="PARTIAL", nature="DYNAMIC")
-    chunks = [_chunk("MathCo is a data analytics company.")]
+    chunks = [_chunk("MathCo is a data analytics company.", score=0.55)]
 
-    route = await resolve_response_route(provider, "Compare MathCo with Yellow.ai", chunks)
+    route = await resolve_response_route(
+        provider, "What is Yellow.ai's latest funding?", chunks
+    )
 
     assert route.documents_used is True
     assert route.web_search_used is True
@@ -110,9 +123,49 @@ async def test_partial_dynamic_uses_documents_and_web(mock_search):
 
 
 @pytest.mark.asyncio
+async def test_typo_upload_visibility_uses_documents_after_coverage_none():
+    provider = FakeProvider(coverage="NONE", nature="DYNAMIC")
+    chunks = [_chunk("CPET quantitative aptitude model questions.")]
+
+    route = await resolve_response_route(
+        provider, "can you know see the CPET docuiment i uploaded", chunks
+    )
+
+    assert route.document_access is True
+    assert route.documents_used is True
+    assert route.web_search_used is False
+
+
+@pytest.mark.asyncio
+async def test_upload_acknowledgment_uses_documents_with_chunks():
+    provider = FakeProvider(coverage="NONE", nature="STABLE")
+    chunks = [_chunk("CPET quantitative aptitude topics and syllabus.")]
+
+    route = await resolve_response_route(provider, "CPET document i uploaded", chunks)
+
+    assert route.document_access is True
+    assert route.documents_used is True
+    assert route.web_search_used is False
+    assert route.general_knowledge_used is False
+
+
+@pytest.mark.asyncio
+async def test_document_access_query_uses_documents_with_chunks():
+    provider = FakeProvider(coverage="NONE", nature="STABLE")
+    chunks = [_chunk("Attention Is All You Need — Transformer architecture.")]
+
+    route = await resolve_response_route(provider, "now can you read the doc", chunks)
+
+    assert route.document_access is True
+    assert route.documents_used is True
+    assert route.general_knowledge_used is False
+    assert route.doc_chunks == chunks
+
+
+@pytest.mark.asyncio
 async def test_partial_stable_uses_documents_and_general_knowledge():
     provider = FakeProvider(coverage="PARTIAL", nature="STABLE")
-    chunks = [_chunk("MathCo uses Python.")]
+    chunks = [_chunk("MathCo uses Python.", score=0.55)]
 
     route = await resolve_response_route(
         provider, "What does MathCo use and what is supervised learning?", chunks
