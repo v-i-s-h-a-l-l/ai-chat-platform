@@ -185,7 +185,7 @@ export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectMod
                 </div>
                 <div className="space-y-1.5">
                   <h3 className="text-[13px] font-semibold text-zinc-800">Improved Prompt</h3>
-                  <div className="max-h-48 overflow-y-auto rounded-xl border border-amber-200 bg-amber-50/50 px-4 py-3 text-[13px] leading-relaxed whitespace-pre-wrap text-zinc-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-zinc-300">
+                  <div className="max-h-48 overflow-y-auto rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] leading-relaxed whitespace-pre-wrap text-zinc-700">
                     {optimization.improved_prompt}
                   </div>
                 </div>
