@@ -1,0 +1,84 @@
+# Render blueprint — separate API + worker, managed Postgres/Redis, external Qdrant.
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: yellobot-api
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: PORT
+        value: "8000"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: yellobot-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: yellobot-redis
+          type: redis
+          property: connectionString
+      - key: QDRANT_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: RATE_LIMIT_USE_REDIS
+        value: "true"
+      - key: METRICS_TOKEN
+        generateValue: true
+      - key: RAG_ENABLED
+        value: "true"
+
+  - type: worker
+    name: yellobot-ingestion
+    runtime: docker
+    dockerfilePath: backend/Dockerfile.worker
+    dockerContext: backend
+    plan: starter
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: yellobot-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: yellobot-redis
+          type: redis
+          property: connectionString
+      - key: QDRANT_URL
+        sync: false
+      - key: SECRET_KEY
+        fromService:
+          name: yellobot-api
+          type: web
+          envVarKey: SECRET_KEY
+      - key: GROQ_API_KEY
+        sync: false
+      - key: INGESTION_MAX_JOBS
+        value: "3"
+      - key: RAG_ENABLED
+        value: "true"
+
+  - type: redis
+    name: yellobot-redis
+    plan: starter
+    ipAllowList: []
+
+databases:
+  - name: yellobot-postgres
+    plan: starter
+    databaseName: chatbot_db
+    user: chatbot

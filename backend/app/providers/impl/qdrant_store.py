@@ -18,7 +18,10 @@ _client: AsyncQdrantClient | None = None
 def _get_client() -> AsyncQdrantClient:
     global _client
     if _client is None:
-        _client = AsyncQdrantClient(url=settings.qdrant_url, check_compatibility=False)
+        kwargs: dict = {"url": settings.qdrant_url, "check_compatibility": False}
+        if settings.qdrant_api_key.strip():
+            kwargs["api_key"] = settings.qdrant_api_key.strip()
+        _client = AsyncQdrantClient(**kwargs)
     return _client
 
 
@@ -29,6 +32,14 @@ class QdrantVectorStore(VectorStore):
         client = _get_client()
         collections = await client.get_collections()
         return settings.qdrant_collection in {c.name for c in collections.collections}
+
+    async def recreate_collection(self) -> None:
+        """Drop and recreate the collection (required after embedding dimension changes)."""
+        client = _get_client()
+        if await self._collection_exists():
+            await client.delete_collection(settings.qdrant_collection)
+            logger.info("Deleted Qdrant collection: %s", settings.qdrant_collection)
+        await self.ensure_collection()
 
     async def ensure_collection(self) -> None:
         client = _get_client()

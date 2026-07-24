@@ -46,17 +46,22 @@ class Settings(BaseSettings):
     rag_enabled: bool = True
     redis_url: str = "redis://localhost:6379"
     qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: str = ""
     qdrant_collection: str = "chatbot_chunks"
     document_storage_path: str = "./storage/documents"
-    embedding_model: str = "BAAI/bge-m3"
-    reranker_model: str = "BAAI/bge-reranker-v2-m3"
-    embedding_dimension: int = 1024
+    embedding_model: str = "BAAI/bge-base-en-v1.5"
+    reranker_model: str = "BAAI/bge-reranker-base"
+    embedding_dimension: int = 768
+    embedding_query_prefix: str = (
+        "Represent this sentence for searching relevant passages: "
+    )
     rag_top_k: int = 20
     rag_rerank_top_k: int = 5
     rag_hybrid_dense_weight: float = 0.7
     rag_mmr_lambda: float = 0.5
     rag_max_upload_mb: int = 25
     ingestion_max_retries: int = 3
+    ingestion_max_jobs: int = 3
     ingestion_stale_minutes: int = 4
     # When False (default), Redis/Arq enqueue failure raises — never run embed in API process.
     # Set True only for local demos without a worker.
@@ -64,6 +69,7 @@ class Settings(BaseSettings):
 
     # Observability
     metrics_enabled: bool = True
+    metrics_token: str = ""
     otel_enabled: bool = True
     otel_service_name: str = "chatbot-api"
     otel_exporter_otlp_endpoint: str = ""
@@ -113,6 +119,12 @@ class Settings(BaseSettings):
                 "INGESTION_INLINE_FALLBACK must be false in production "
                 "(heavy embedding must not run in the API process)"
             )
+        if not self.rate_limit_use_redis:
+            raise ValueError("RATE_LIMIT_USE_REDIS must be true in production")
+        if any("localhost" in origin.lower() for origin in self.cors_origins_list):
+            raise ValueError("CORS_ORIGINS must not contain localhost in production")
+        if self.metrics_enabled and not self.metrics_token.strip():
+            raise ValueError("METRICS_TOKEN is required when metrics are enabled in production")
         return self
 
 

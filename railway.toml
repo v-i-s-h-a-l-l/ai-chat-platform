@@ -1,0 +1,18 @@
+# Railway — deploy backend from repo root (Settings → Root Directory: leave empty or `/`)
+# Uses combined API+worker image so uploaded files are shared via one volume.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "backend/Dockerfile.production"
+watchPatterns = ["backend/**"]
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# After first deploy, in Railway dashboard:
+# 1. Add PostgreSQL + Redis plugins to this project
+# 2. Mount a Volume on this service at /app/storage (min 1 GB)
+# 3. Set environment variables from deploy/env.production.example
