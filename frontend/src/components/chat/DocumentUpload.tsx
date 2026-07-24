@@ -132,12 +132,10 @@ function queueStatusClass(item: UploadQueueItem): string {
       return "text-emerald-600 dark:text-emerald-400";
 
     case "error":
-
     case "invalid":
       return "text-red-600 dark:text-red-400";
 
     case "uploading":
-
     case "confirmation":
       return "text-amber-600 dark:text-amber-400";
 
