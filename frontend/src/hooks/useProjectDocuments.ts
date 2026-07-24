@@ -7,7 +7,14 @@ import {
 } from "../api/uploadValidation";
 import { useToastOptional } from "../contexts/ToastContext";
 import type { ProjectDocument } from "../types/document";
-import type { UploadQueueItem } from "../types/upload";
+import {
+  appendActivityLog,
+  INDEXING_ACTIVITY_STEPS,
+  INDEXING_STEP_INTERVAL_MS,
+  UPLOAD_PROGRESS_MILESTONES,
+  type ActivityLogEntry,
+  type UploadQueueItem,
+} from "../types/upload";
 
 const PROCESSING_POLL_MS = 3_000;
 const SUCCESS_DISMISS_MS = 2_500;
@@ -27,6 +34,7 @@ function createQueueItem(file: File): UploadQueueItem {
       status: "invalid",
       progress: 0,
       error: validation.error,
+      logs: appendActivityLog(undefined, validation.error),
     };
   }
   return {
@@ -34,7 +42,20 @@ function createQueueItem(file: File): UploadQueueItem {
     file,
     status: "pending",
     progress: 0,
+    logs: appendActivityLog(undefined, "Queued for upload"),
   };
+}
+
+function nextProgressMilestone(
+  percent: number,
+  lastLogged?: number,
+): number | null {
+  for (const milestone of UPLOAD_PROGRESS_MILESTONES) {
+    if (percent >= milestone && (lastLogged ?? 0) < milestone) {
+      return milestone;
+    }
+  }
+  return null;
 }
 
 export function useProjectDocuments(projectId: string | undefined) {
@@ -42,6 +63,9 @@ export function useProjectDocuments(projectId: string | undefined) {
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
+  const [documentLogs, setDocumentLogs] = useState<
+    Record<string, ActivityLogEntry[]>
+  >({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingUpload, setPendingUpload] = useState<{
@@ -52,12 +76,57 @@ export function useProjectDocuments(projectId: string | undefined) {
   const reprocessingRef = useRef(false);
   const queueRef = useRef<UploadQueueItem[]>([]);
   const processingRef = useRef(false);
+  const documentStatusRef = useRef<Map<string, string>>(new Map());
 
   const syncQueue = useCallback(
     (updater: (prev: UploadQueueItem[]) => UploadQueueItem[]) => {
       const next = updater(queueRef.current);
       queueRef.current = next;
       setUploadQueue(next);
+    },
+    [],
+  );
+
+  const appendQueueLog = useCallback(
+    (id: string, message: string, patch?: Partial<UploadQueueItem>) => {
+      syncQueue((prev) =>
+        prev.map((item) => {
+          if (item.id !== id) return item;
+          return {
+            ...item,
+            ...patch,
+            logs: appendActivityLog(item.logs, message),
+          };
+        }),
+      );
+    },
+    [syncQueue],
+  );
+
+  const appendDocumentLog = useCallback(
+    (documentId: string, message: string) => {
+      setDocumentLogs((prev) => ({
+        ...prev,
+        [documentId]: appendActivityLog(prev[documentId], message),
+      }));
+    },
+    [],
+  );
+
+  const seedDocumentIndexingLogs = useCallback(
+    (documentId: string, queueLogs?: ActivityLogEntry[]) => {
+      setDocumentLogs((prev) => {
+        const merged = [...(queueLogs ?? []), ...(prev[documentId] ?? [])];
+        const withUploadComplete = appendActivityLog(
+          merged,
+          "Upload complete — indexing started",
+        );
+        const withFirstStep = appendActivityLog(
+          withUploadComplete,
+          INDEXING_ACTIVITY_STEPS[0],
+        );
+        return { ...prev, [documentId]: withFirstStep };
+      });
     },
     [],
   );
@@ -127,6 +196,55 @@ export function useProjectDocuments(projectId: string | undefined) {
     return () => window.clearInterval(intervalId);
   }, [projectId, documents, listDocuments]);
 
+  useEffect(() => {
+    for (const doc of documents) {
+      const prevStatus = documentStatusRef.current.get(doc.id);
+      if (prevStatus === "processing" && doc.status === "ready") {
+        appendDocumentLog(
+          doc.id,
+          `Ready — ${doc.chunk_count} chunk${doc.chunk_count === 1 ? "" : "s"} indexed`,
+        );
+      } else if (
+        prevStatus === "processing" &&
+        doc.status === "failed" &&
+        doc.error_message
+      ) {
+        appendDocumentLog(doc.id, doc.error_message);
+      }
+      documentStatusRef.current.set(doc.id, doc.status);
+    }
+  }, [documents, appendDocumentLog]);
+
+  useEffect(() => {
+    const processingDocs = documents.filter(
+      (doc) => doc.status === "processing" && !doc.error_message,
+    );
+    if (processingDocs.length === 0) return;
+
+    const intervalId = window.setInterval(() => {
+      for (const doc of processingDocs) {
+        setDocumentLogs((prev) => {
+          const logs = prev[doc.id] ?? [];
+          const currentStepIndex = INDEXING_ACTIVITY_STEPS.findIndex((step) =>
+            logs.some((entry) => entry.message === step),
+          );
+          const nextIndex = currentStepIndex + 1;
+          if (nextIndex >= INDEXING_ACTIVITY_STEPS.length) return prev;
+
+          const nextStep = INDEXING_ACTIVITY_STEPS[nextIndex];
+          if (logs.some((entry) => entry.message === nextStep)) return prev;
+
+          return {
+            ...prev,
+            [doc.id]: appendActivityLog(logs, nextStep),
+          };
+        });
+      }
+    }, INDEXING_STEP_INTERVAL_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [documents]);
+
   const updateQueueItem = useCallback(
     (id: string, patch: Partial<UploadQueueItem>) => {
       syncQueue((prev) =>
@@ -158,13 +276,28 @@ export function useProjectDocuments(projectId: string | undefined) {
         status: "uploading",
         progress: 0,
         error: undefined,
+        lastLoggedProgress: 0,
       });
+      appendQueueLog(item.id, "Starting upload…");
 
       try {
         const { document } = await documentApi.upload(projectId, item.file, {
           confirmed: userConfirmed,
-          onProgress: (percent) =>
-            updateQueueItem(item.id, { progress: percent }),
+          onProgress: (percent) => {
+            const current = queueRef.current.find((entry) => entry.id === item.id);
+            const milestone = nextProgressMilestone(
+              percent,
+              current?.lastLoggedProgress,
+            );
+            if (milestone !== null) {
+              appendQueueLog(item.id, `Uploaded ${milestone}%…`, {
+                progress: percent,
+                lastLoggedProgress: milestone,
+              });
+            } else {
+              updateQueueItem(item.id, { progress: percent });
+            }
+          },
         });
         setDocuments((prev) => [
           document,
@@ -174,7 +307,7 @@ export function useProjectDocuments(projectId: string | undefined) {
         if (document.status === "failed") {
           const message =
             document.error_message ?? `Failed to process "${item.file.name}"`;
-          updateQueueItem(item.id, {
+          appendQueueLog(item.id, message, {
             status: "error",
             progress: 100,
             error: message,
@@ -183,7 +316,15 @@ export function useProjectDocuments(projectId: string | undefined) {
           return "failed";
         }
 
-        updateQueueItem(item.id, { status: "success", progress: 100 });
+        const currentItem = queueRef.current.find((entry) => entry.id === item.id);
+        seedDocumentIndexingLogs(document.id, currentItem?.logs);
+        updateQueueItem(item.id, {
+          status: "success",
+          progress: 100,
+          documentId: document.id,
+          lastLoggedProgress: 100,
+        });
+        appendQueueLog(item.id, "Upload complete — indexing started");
         toast?.showToast(`Uploaded ${item.file.name}`);
         dismissQueueItem(item.id, SUCCESS_DISMISS_MS);
         return "success";
@@ -195,11 +336,14 @@ export function useProjectDocuments(projectId: string | undefined) {
             detail: confirmation,
             queueId: item.id,
           });
-          updateQueueItem(item.id, { status: "confirmation", progress: 0 });
+          appendQueueLog(item.id, "Confirmation required before upload", {
+            status: "confirmation",
+            progress: 0,
+          });
           return "confirmation_required";
         }
         const message = getErrorMessage(err);
-        updateQueueItem(item.id, {
+        appendQueueLog(item.id, message, {
           status: "error",
           progress: 100,
           error: message,
@@ -208,7 +352,14 @@ export function useProjectDocuments(projectId: string | undefined) {
         return "failed";
       }
     },
-    [projectId, updateQueueItem, dismissQueueItem, toast],
+    [
+      projectId,
+      updateQueueItem,
+      appendQueueLog,
+      seedDocumentIndexingLogs,
+      dismissQueueItem,
+      toast,
+    ],
   );
 
   const processQueue = useCallback(async () => {
@@ -298,8 +449,9 @@ export function useProjectDocuments(projectId: string | undefined) {
     setError(null);
     setPendingUpload(null);
     updateQueueItem(queueId, { status: "pending", confirmed: true });
+    appendQueueLog(queueId, "Confirmation accepted — queued for upload");
     void processQueue();
-  }, [pendingUpload, projectId, updateQueueItem, processQueue]);
+  }, [pendingUpload, projectId, updateQueueItem, appendQueueLog, processQueue]);
 
   const cancelPendingUpload = useCallback(() => {
     if (pendingUpload) {
@@ -316,6 +468,12 @@ export function useProjectDocuments(projectId: string | undefined) {
       try {
         await documentApi.delete(projectId, documentId);
         setDocuments((prev) => prev.filter((d) => d.id !== documentId));
+        setDocumentLogs((prev) => {
+          const next = { ...prev };
+          delete next[documentId];
+          return next;
+        });
+        documentStatusRef.current.delete(documentId);
         toast?.showToast("Document removed");
       } catch (err) {
         setError(getErrorMessage(err));
@@ -331,6 +489,7 @@ export function useProjectDocuments(projectId: string | undefined) {
     loading,
     uploading: hasActiveUploads(uploadQueue),
     uploadQueue,
+    documentLogs,
     deletingId,
     error,
     setError,

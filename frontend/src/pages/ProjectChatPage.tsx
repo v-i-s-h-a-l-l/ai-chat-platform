@@ -14,6 +14,7 @@ export function ProjectChatPage() {
     documents,
     uploading: documentsUploading,
     uploadQueue,
+    documentLogs,
     deletingId: deletingDocumentId,
     error: documentsError,
     setError: setDocumentsError,
@@ -104,6 +105,7 @@ export function ProjectChatPage() {
           documents={documents}
           documentsUploading={documentsUploading}
           uploadQueue={uploadQueue}
+          documentLogs={documentLogs}
           deletingDocumentId={deletingDocumentId}
           onDocumentUpload={addFiles}
           onRemoveQueuedFile={removeQueuedFile}
