@@ -49,6 +49,30 @@ def test_optimize_prompt_unsafe(client):
     assert data["improved_prompt"] is None
 
 
+def test_optimize_prompt_unsafe_profanity(client):
+    mock_provider = client._mock_provider
+    mock_provider.analyze_and_optimize.return_value = PromptOptimizationProviderResult(
+        safe=False,
+        reason="Vulgar language is not allowed on YelloBot.",
+    )
+
+    response = client.post(
+        "/projects/optimize-prompt",
+        json={
+            "project_name": "Edgy Bot",
+            "description": "",
+            "system_prompt": "You are a certified motherfucker.",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["safe"] is False
+    assert "vulgar" in data["reason"].lower()
+    assert data["improved_prompt"] is None
+    assert data["changes"] == []
+
+
 def test_optimize_prompt_requires_auth():
     from fastapi.testclient import TestClient
     from app.main import app

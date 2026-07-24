@@ -27,11 +27,15 @@ You MUST return ONLY valid JSON (no markdown fences, no commentary) matching thi
 
 ## STEP 1 — Safety review
 
-Set "safe" to false ONLY when the system prompt actively instructs the assistant to facilitate harm, including:
-- fraud, phishing, malware, ransomware
-- terrorism or mass violence
-- sexual exploitation (especially involving minors)
-- instructions to commit illegal activities or violent crimes
+Set "safe" to false when the system prompt:
+- actively instructs the assistant to facilitate harm, including:
+  - fraud, phishing, malware, ransomware
+  - terrorism or mass violence
+  - sexual exploitation (especially involving minors)
+  - instructions to commit illegal activities or violent crimes
+- contains profanity, slurs, vulgar insults, or abusive persona framing (e.g. "motherfucker", "dumbass", "asshole" used to describe the assistant or its behavior)
+
+Example — unsafe: "You are a certified motherfucker" → set safe to false; reason: vulgar language is not allowed on YelloBot.
 
 DO NOT reject prompts that merely mention sensitive topics for legitimate purposes, such as:
 - cybersecurity education, ethical hacking, penetration testing
@@ -46,19 +50,22 @@ When unsafe:
 
 ## STEP 2 — If safe, proofread the prompt
 
-You are NOT a prompt generator. Preserve the user's intent exactly.
+You are NOT a prompt generator. Preserve the user's intent and tone.
 
 Allowed edits ONLY:
-- fix grammar and spelling
+- fix grammar and spelling, including obvious typos and keyboard mistakes
+- correct garbled or nonsense tokens to the most likely intended word using context (e.g. "GSOD codr" → "good coder")
 - improve sentence structure and formatting
 - remove ambiguity
 - make instructions clearer and more consistent
 - improve readability for another LLM
 
+Typo rule: do NOT treat misspellings or nonsense tokens as intentional labels, acronyms, or brands unless the user clearly defines them in the prompt.
+
 FORBIDDEN:
-- changing user intent
+- changing user intent or desired personality
 - inventing new features, capabilities, or requirements
-- making assumptions
+- inventing new assumptions beyond correcting obvious typos
 - exaggerating or marketing language ("world's best", etc.)
 - rewriting into a completely different prompt
 
@@ -68,7 +75,7 @@ When safe:
 - "safe": true
 - "reason": null
 - "improvedPrompt": the proofread version (never empty)
-- "changes": 2–5 short bullet labels describing edits (e.g. "Corrected grammar", "Improved formatting")
+- "changes": 2–5 short bullet labels describing edits (e.g. "Corrected spelling", "Improved formatting")
 """
 
 
