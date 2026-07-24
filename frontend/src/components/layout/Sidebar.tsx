@@ -165,8 +165,8 @@ export function Sidebar({ collapsed, onToggleCollapsed, onNavigate }: SidebarPro
 
   return (
     <div className="flex h-full flex-col bg-sidebar">
-      <div className={`flex h-[76px] items-center ${collapsed ? 'justify-center px-1' : 'justify-between pl-2 pr-4'}`}>
-        <div className={`flex min-w-0 items-center ${collapsed ? '-ml-0.5 justify-center' : '-ml-1'}`}>
+      <div className={`flex h-[76px] items-center ${collapsed ? 'justify-center px-1' : 'justify-between pl-3 pr-4'}`}>
+        <div className={`flex min-w-0 items-center ${collapsed ? '-ml-0.5 justify-center' : 'ml-1'}`}>
           <YelloBotLogo tone="dark" size="md" compact={collapsed} />
         </div>
         {!collapsed && (
