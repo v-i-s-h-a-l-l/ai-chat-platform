@@ -9,7 +9,6 @@ from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.llm import get_llm_provider
 from app.dependencies.prompt_optimization import get_prompt_optimization_service
-from app.guardrails import GuardrailViolationError
 from app.models.user import User
 from app.schemas.chat import ChatMessageResponse, ChatRequest, ChatResponse
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
@@ -167,8 +166,6 @@ async def chat(
             provider,
             request_model=data.model,
         )
-    except GuardrailViolationError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except ValueError as exc:
         detail = str(exc)
         if "not found" in detail.lower():
