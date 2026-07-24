@@ -1,6 +1,7 @@
 import logging
-import time
 from dataclasses import dataclass
+
+from cachetools import TTLCache
 
 from app.config import settings
 from app.utils.http_client import get_async_http_client
@@ -11,6 +12,7 @@ TAVILY_SEARCH_URL = "https://api.tavily.com/search"
 CACHE_TTL_SECONDS = 600
 MAX_SNIPPET_CHARS = 400
 DEFAULT_MAX_RESULTS = 3
+SEARCH_CACHE_MAXSIZE = 1000
 
 
 @dataclass(frozen=True)
@@ -21,7 +23,7 @@ class SearchResult:
 
 
 class SearchService:
-    _cache: dict[str, tuple[list[SearchResult], float]] = {}
+    _cache: TTLCache = TTLCache(maxsize=SEARCH_CACHE_MAXSIZE, ttl=CACHE_TTL_SECONDS)
 
     @classmethod
     async def search(cls, query: str, max_results: int = DEFAULT_MAX_RESULTS) -> list[SearchResult]:
@@ -79,18 +81,11 @@ class SearchService:
 
     @classmethod
     def _get_from_cache(cls, key: str) -> list[SearchResult] | None:
-        entry = cls._cache.get(key)
-        if entry is None:
-            return None
-        results, stored_at = entry
-        if time.time() - stored_at > CACHE_TTL_SECONDS:
-            del cls._cache[key]
-            return None
-        return results
+        return cls._cache.get(key)
 
     @classmethod
     def _store_in_cache(cls, key: str, results: list[SearchResult]) -> None:
-        cls._cache[key] = (results, time.time())
+        cls._cache[key] = results
 
     @classmethod
     def format_results_for_llm(cls, results: list[SearchResult]) -> str:
@@ -100,6 +95,7 @@ class SearchService:
         sections: list[str] = []
         for i, result in enumerate(results, start=1):
             sections.append(
-                f"[{i}] {result.title} ({result.url})\n{result.content}"
+                f"[{i}] {result.title} ({result.url})\n"
+                f"<untrusted_web>\n{result.content}\n</untrusted_web>"
             )
         return "\n\n".join(sections)

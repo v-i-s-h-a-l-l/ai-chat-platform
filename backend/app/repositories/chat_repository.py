@@ -61,3 +61,16 @@ class ChatRepository:
         db.commit()
         db.refresh(message)
         return message
+
+    @staticmethod
+    def get_by_id(
+        db: Session, project_id: UUID, message_id: UUID
+    ) -> ChatMessage | None:
+        return (
+            db.query(ChatMessage)
+            .filter(
+                ChatMessage.id == message_id,
+                ChatMessage.project_id == project_id,
+            )
+            .first()
+        )

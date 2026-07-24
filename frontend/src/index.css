@@ -92,46 +92,93 @@ body {
   @apply font-semibold text-zinc-900 dark:text-zinc-100;
 }
 
-/* Syntax-highlighted code blocks */
+/* Syntax-highlighted code blocks (ChatGPT / GitHub / VS Code style) */
 .code-block {
   --code-bg: #0d1117;
-  --code-header-bg: #161b22;
-  --code-gutter-bg: #0d1117;
+  --code-font-size: 14px;
+  --code-line-height: 1.5;
+  --code-font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, Menlo, Monaco,
+    ui-monospace, SFMono-Regular, 'SF Mono', monospace;
   --code-gutter-color: #6e7681;
+  line-height: var(--code-line-height);
+  font-size: var(--code-font-size);
 }
 
 .code-block-scroll {
   background: var(--code-bg);
 }
 
-.code-block-table .code-block-gutter {
-  width: 3rem;
-  min-width: 3rem;
-  padding: 1rem 0.75rem 1rem 1rem;
-  background: var(--code-gutter-bg);
+.code-block-body {
+  display: flex;
+  align-items: stretch;
+  min-width: min-content;
+}
+
+.code-block-gutters {
+  flex: 0 0 auto;
+  padding: 0.5rem 0;
   border-right: 1px solid #21262d;
   user-select: none;
 }
 
-.code-block-table .code-block-line {
-  padding: 0 1rem 0 0.75rem;
+.code-block-gutter-line {
+  padding: 0 0.75rem 0 0.875rem;
+  min-width: 2.25rem;
+  text-align: right;
+  font-family: var(--code-font-family);
+  font-size: var(--code-font-size);
+  line-height: var(--code-line-height);
+  letter-spacing: normal;
+  color: var(--code-gutter-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.code-block-pre {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0.5rem 0.875rem 0.5rem 0.75rem;
+  font-family: var(--code-font-family);
+  font-size: var(--code-font-size);
+  line-height: var(--code-line-height);
+  letter-spacing: normal;
   white-space: pre;
-}
-
-.code-block-table .code-block-row:first-child .code-block-gutter,
-.code-block-table .code-block-row:first-child .code-block-line {
-  padding-top: 1rem;
-}
-
-.code-block-table .code-block-row:last-child .code-block-gutter,
-.code-block-table .code-block-row:last-child .code-block-line {
-  padding-bottom: 1rem;
-}
-
-.code-block .hljs {
+  overflow-x: auto;
+  tab-size: 4;
   background: transparent;
+  border: none;
+}
+
+/* Override highlight.js github-dark theme layout rules (pre code.hljs { padding: 1em }) */
+.chat-markdown .code-block pre,
+.code-block pre {
+  margin: 0;
+}
+
+.code-block pre code.hljs,
+.code-block code.hljs {
+  display: block;
+  margin: 0;
+  padding: 0 !important;
+  overflow: visible;
+  background: transparent !important;
   color: #e6edf3;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  white-space: pre;
+  tab-size: inherit;
+}
+
+.code-block .hljs span,
+.code-block .hljs {
+  display: inline;
+  margin: 0;
   padding: 0;
+  line-height: inherit;
+  font: inherit;
+  vertical-align: baseline;
 }
 
 @keyframes typing-dot {

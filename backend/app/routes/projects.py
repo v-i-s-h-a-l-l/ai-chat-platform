@@ -1,9 +1,10 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.llm import get_llm_provider
@@ -20,6 +21,8 @@ from app.services.chat_service import ChatService
 from app.services.llm_provider import LLMProvider
 from app.services.project_service import ProjectService
 from app.services.prompt_optimization_service import PromptOptimizationService
+from app.utils.errors import GENERIC_LLM_ERROR, GENERIC_OPTIMIZE_ERROR, sanitize_error_for_client
+from app.utils.rate_limit import limiter
 from app.utils.serializers import serialize_message, serialize_project
 from app.utils.sse import serialize_chat_event
 
@@ -46,7 +49,9 @@ def list_projects(
 
 
 @router.post("/optimize-prompt", response_model=PromptOptimizationResponse)
+@limiter.limit(settings.rate_limit_optimize)
 async def optimize_prompt(
+    request: Request,
     data: PromptOptimizationRequest,
     current_user: User = Depends(get_current_user),
     service: PromptOptimizationService = Depends(get_prompt_optimization_service),
@@ -70,7 +75,9 @@ async def optimize_prompt(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Prompt optimization failed: {exc}",
+            detail=sanitize_error_for_client(
+                exc, context="Prompt optimization", public_message=GENERIC_OPTIMIZE_ERROR
+            ),
         ) from exc
 
 
@@ -117,7 +124,9 @@ def get_messages(
 
 
 @router.post("/{project_id}/chat", response_model=ChatResponse)
+@limiter.limit(settings.rate_limit_chat)
 async def chat(
+    request: Request,
     project_id: UUID,
     data: ChatRequest,
     current_user: User = Depends(get_current_user),
@@ -135,7 +144,9 @@ async def chat(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to get response from LLM: {exc}",
+            detail=sanitize_error_for_client(
+                exc, context="Chat completion", public_message=GENERIC_LLM_ERROR
+            ),
         ) from exc
 
     return ChatResponse(
@@ -152,7 +163,9 @@ async def _to_sse_stream(events):
 
 
 @router.post("/{project_id}/chat/stream")
+@limiter.limit(settings.rate_limit_chat)
 async def chat_stream(
+    request: Request,
     project_id: UUID,
     data: ChatRequest,
     current_user: User = Depends(get_current_user),

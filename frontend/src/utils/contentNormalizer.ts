@@ -9,13 +9,15 @@
  *   1. Protect fenced code blocks (never touch their contents)
  *   2. Convert HTML → Markdown
  *   3. Strip unsafe HTML tags (content preserved)
- *   4. Normalize bullets + whitespace (NON-table lines only)
- *   5. Repair malformed markdown tables (validate → repair → blank-line guard)
- *   6. Fix list spacing
- *   7. Restore code blocks
+ *   4. Convert oversized/list-heavy tables → headings + lists
+ *   5. Normalize bullets + whitespace (NON-table lines only)
+ *   6. Repair malformed markdown tables (validate → repair → blank-line guard)
+ *   7. Fix list spacing
+ *   8. Restore code blocks
  */
 
 import { repairMarkdownTables } from './markdownTableRepair'
+import { formatChatResponse } from './chatResponseFormatter'
 
 const CODE_FENCE_PLACEHOLDER = '\u0000CODE_FENCE_'
 
@@ -73,7 +75,10 @@ export function normalizeAIContent(content: string): string {
     '',
   )
 
-  // Step 4: Per-line normalization. CRITICAL: skip table lines so we never
+  // Step 4: Convert chat-unfriendly tables (lists/long cells) into sections
+  normalized = formatChatResponse(normalized)
+
+  // Step 5: Per-line normalization. CRITICAL: skip table lines so we never
   // mangle pipe structure (the old global pipe-replace broke tables).
   normalized = normalized
     .split('\n')
@@ -92,20 +97,19 @@ export function normalizeAIContent(content: string): string {
     })
     .join('\n')
 
-  // Step 5: Collapse 3+ blank lines → one blank line
+  // Step 6: Collapse 3+ blank lines → one blank line
   normalized = normalized.replace(/\n{3,}/g, '\n\n')
 
-  // Step 6: Validate + repair malformed markdown tables. This also guarantees
-  // blank lines around every table so remark-gfm reliably parses them.
+  // Step 7: Validate + repair malformed markdown tables. This also guarantees
   normalized = repairMarkdownTables(normalized)
 
-  // Step 7: Ensure proper spacing around list blocks
+  // Step 8: Ensure proper spacing around list blocks
   normalized = fixListFormatting(normalized)
 
-  // Step 8: Restore code blocks
+  // Step 9: Restore code blocks
   normalized = restoreCodeBlocks(normalized, blocks)
 
-  // Step 9: Final trim
+  // Step 10: Final trim
   normalized = normalized.trim()
 
   return normalized

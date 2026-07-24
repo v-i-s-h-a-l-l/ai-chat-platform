@@ -99,7 +99,7 @@ const LANGUAGE_LABELS: Record<string, string> = {
 }
 
 export function getLanguageLabel(language?: string): string {
-  if (!language) return 'Code'
+  if (!language?.trim()) return 'Python'
   const normalized = language.toLowerCase()
   if (LANGUAGE_LABELS[normalized]) return LANGUAGE_LABELS[normalized]
   if (hljs.getLanguage(normalized)) {
@@ -108,14 +108,18 @@ export function getLanguageLabel(language?: string): string {
   return 'Code'
 }
 
+/** Untagged fences default to Python for display and highlighting. */
+export function resolveCodeLanguage(language?: string): string {
+  const normalized = language?.trim().toLowerCase()
+  if (normalized && hljs.getLanguage(normalized)) return normalized
+  if (!normalized) return 'python'
+  return normalized
+}
+
 export function highlightCode(code: string, language?: string): string {
-  const normalized = language?.toLowerCase()
-  if (normalized && hljs.getLanguage(normalized)) {
-    return hljs.highlight(code, { language: normalized }).value
-  }
-  if (code.trim()) {
-    const auto = hljs.highlightAuto(code)
-    if (auto.relevance > 5) return auto.value
+  const resolved = resolveCodeLanguage(language)
+  if (hljs.getLanguage(resolved)) {
+    return hljs.highlight(code, { language: resolved }).value
   }
   return hljs.highlight(code, { language: 'plaintext' }).value
 }

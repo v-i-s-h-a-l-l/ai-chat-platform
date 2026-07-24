@@ -1,16 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.schemas.auth import MessageResponse, UserLogin, UserRegister
 from app.services.auth import AuthService
 from app.utils.cookies import REFRESH_TOKEN_COOKIE, clear_auth_cookies, set_auth_cookies
+from app.utils.rate_limit import limiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
-def register(data: UserRegister, db: Session = Depends(get_db)):
+@limiter.limit(settings.rate_limit_auth)
+def register(request: Request, data: UserRegister, db: Session = Depends(get_db)):
     try:
         AuthService.register_user(db, data)
     except ValueError as exc:
@@ -23,7 +26,8 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=MessageResponse)
-def login(data: UserLogin, response: Response, db: Session = Depends(get_db)):
+@limiter.limit(settings.rate_limit_auth)
+def login(request: Request, data: UserLogin, response: Response, db: Session = Depends(get_db)):
     try:
         user = AuthService.authenticate_user(db, data)
         access_token, refresh_token = AuthService.create_session(db, user)
@@ -39,6 +43,7 @@ def login(data: UserLogin, response: Response, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=MessageResponse)
+@limiter.limit(settings.rate_limit_auth)
 def refresh(request: Request, response: Response, db: Session = Depends(get_db)):
     refresh_token = request.cookies.get(REFRESH_TOKEN_COOKIE)
     if not refresh_token:

@@ -53,12 +53,17 @@ export const documentApi = {
     return api.get<ProjectDocument[]>(`/projects/${projectId}/documents`).then((res) => res.data)
   },
 
-  upload(projectId: string, file: File): Promise<DocumentUploadResponse> {
+  upload(projectId: string, file: File, options?: { confirmed?: boolean }): Promise<DocumentUploadResponse> {
     const form = new FormData()
     form.append('file', file)
+    const headers: Record<string, string> = { 'Content-Type': 'multipart/form-data' }
+    if (options?.confirmed) {
+      headers['X-Upload-Confirm'] = 'true'
+    }
     return api
       .post<DocumentUploadResponse>(`/projects/${projectId}/documents`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers,
+        timeout: 60_000,
       })
       .then((res) => res.data)
   },

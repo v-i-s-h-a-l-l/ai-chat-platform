@@ -2,6 +2,8 @@ import logging
 import time
 from uuid import UUID
 
+from starlette.concurrency import run_in_threadpool
+
 from app.config import settings
 from app.providers.base import EmbeddingProvider, QueryRewriter, Reranker, Retriever, VectorStore
 from app.providers.types import QueryType, RetrievalContext
@@ -38,7 +40,7 @@ class HybridRetriever(Retriever):
         timings: dict[str, float] = {}
         t_total = time.perf_counter()
 
-        has_docs = DocumentRepository.has_ready_documents(project_id)
+        has_docs = await run_in_threadpool(DocumentRepository.has_ready_documents, project_id)
         query_type = classify_query(query, has_docs)
         timings["classification"] = (time.perf_counter() - t_total) * 1000
 
@@ -98,6 +100,14 @@ class HybridRetriever(Retriever):
             timings.get("rerank", 0),
             len(compressed),
         )
+
+        try:
+            from app.observability import metrics
+
+            metrics.RAG_DURATION.observe(timings["total"] / 1000.0)
+            metrics.RAG_CHUNKS.observe(len(compressed))
+        except Exception:
+            pass
 
         return RetrievalContext(
             query_type=query_type,

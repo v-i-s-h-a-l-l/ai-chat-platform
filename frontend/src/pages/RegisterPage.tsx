@@ -6,6 +6,7 @@ import { AuthCard } from '../components/auth/AuthCard'
 import { Navbar } from '../components/layout/Navbar'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
+import { validatePassword, PASSWORD_REQUIREMENTS } from '../utils/passwordValidation'
 
 interface FormErrors {
   name?: string
@@ -39,8 +40,11 @@ export function RegisterPage() {
 
     if (!password) {
       newErrors.password = 'Password is required'
-    } else if (password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters'
+    } else {
+      const passwordError = validatePassword(password)
+      if (passwordError) {
+        newErrors.password = passwordError
+      }
     }
 
     if (!confirmPassword) {
@@ -121,6 +125,11 @@ export function RegisterPage() {
             error={errors.password}
             autoComplete="new-password"
           />
+          <ul className="list-disc space-y-1 pl-5 text-xs text-zinc-500 dark:text-zinc-400">
+            {PASSWORD_REQUIREMENTS.map((rule) => (
+              <li key={rule}>{rule}</li>
+            ))}
+          </ul>
 
           <Input
             label="Confirm Password"

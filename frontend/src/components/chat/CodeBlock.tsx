@@ -1,20 +1,37 @@
 import { memo, useMemo, useState } from 'react'
 import { CheckIcon, CopyIcon } from '../icons/NavIcons'
-import { getLanguageLabel, highlightCode } from './codeLanguages'
+import { getLanguageLabel, highlightCode, resolveCodeLanguage } from './codeLanguages'
 
 interface CodeBlockProps {
   code: string
   language?: string
 }
 
+function normalizeCode(code: string): string {
+  return code.replace(/\n$/, '')
+}
+
+function countLines(code: string): number {
+  const normalized = normalizeCode(code)
+  if (!normalized) return 1
+  return normalized.split('\n').length
+}
+
 export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockProps) {
   const [copied, setCopied] = useState(false)
+  const resolvedLanguage = resolveCodeLanguage(language)
   const label = getLanguageLabel(language)
+  const normalizedCode = useMemo(() => normalizeCode(code), [code])
 
-  const lines = useMemo(() => {
-    const highlighted = highlightCode(code, language)
-    return highlighted.split('\n')
-  }, [code, language])
+  const highlighted = useMemo(
+    () => highlightCode(normalizedCode, resolvedLanguage),
+    [normalizedCode, resolvedLanguage],
+  )
+
+  const lineNumbers = useMemo(
+    () => Array.from({ length: countLines(normalizedCode) }, (_, index) => index + 1),
+    [normalizedCode],
+  )
 
   async function handleCopy() {
     try {
@@ -27,18 +44,21 @@ export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockPr
   }
 
   return (
-    <div className="code-block group my-3 overflow-hidden rounded-xl border border-zinc-700/60 bg-[#0d1117] shadow-sm">
-      <div className="flex items-center justify-between border-b border-zinc-700/60 bg-[#161b22] px-4 py-2">
-        <span className="font-mono text-[12px] font-medium text-zinc-400">{label}</span>
+    <div className="code-block group my-2 overflow-hidden rounded-lg border border-[#30363d] bg-[#0d1117]">
+      <div className="code-block-header flex items-center justify-between border-b border-[#30363d] bg-[#161b22] px-3 py-1.5">
+        <span className="code-block-lang font-mono text-[11px] font-medium uppercase tracking-wide text-[#8b949e]">
+          {label}
+        </span>
         <button
           type="button"
           onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-zinc-400 transition hover:bg-zinc-700/50 hover:text-zinc-200"
+          aria-label={copied ? 'Copied' : 'Copy code'}
+          className="code-block-copy flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-[#8b949e] transition hover:bg-[#21262d] hover:text-[#e6edf3]"
         >
           {copied ? (
             <>
               <CheckIcon className="h-3.5 w-3.5 text-emerald-400" />
-              <span className="text-emerald-400">Copied!</span>
+              <span className="text-emerald-400">Copied</span>
             </>
           ) : (
             <>
@@ -50,23 +70,18 @@ export const CodeBlock = memo(function CodeBlock({ code, language }: CodeBlockPr
       </div>
 
       <div className="code-block-scroll overflow-x-auto">
-        <table className="code-block-table w-full border-collapse">
-          <tbody>
-            {lines.map((line, index) => (
-              <tr key={index} className="code-block-row">
-                <td className="code-block-gutter select-none text-right align-top font-mono text-[12px] leading-6 text-zinc-500">
-                  {index + 1}
-                </td>
-                <td className="code-block-line align-top font-mono text-[13px] leading-6">
-                  <code
-                    className="hljs block bg-transparent p-0 text-inherit"
-                    dangerouslySetInnerHTML={{ __html: line || '&nbsp;' }}
-                  />
-                </td>
-              </tr>
+        <div className="code-block-body">
+          <div className="code-block-gutters" aria-hidden="true">
+            {lineNumbers.map((number) => (
+              <div key={number} className="code-block-gutter-line">
+                {number}
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+          <pre className="code-block-pre">
+            <code className="hljs" dangerouslySetInnerHTML={{ __html: highlighted }} />
+          </pre>
+        </div>
       </div>
     </div>
   )

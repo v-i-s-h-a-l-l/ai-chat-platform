@@ -1,5 +1,7 @@
-import { lazy, memo, Suspense } from 'react'
+import { lazy, memo, Suspense, useMemo } from 'react'
 import { SparklesIcon } from '../icons/NavIcons'
+import { prepareContentForDisplay } from '../../utils/sourceSectionDisplay'
+import { MessageActions } from './MessageActions'
 import { TypingIndicator } from './TypingIndicator'
 
 // Code-split the markdown/syntax-highlighting stack (react-markdown, remark-gfm,
@@ -12,17 +14,31 @@ const MarkdownContent = lazy(() =>
 interface MessageBubbleProps {
   role: 'user' | 'assistant'
   content: string
+  messageId?: string
+  projectId?: string
   webSearchUsed?: boolean
+  documentsUsed?: boolean
   isStreaming?: boolean
 }
 
 export const MessageBubble = memo(function MessageBubble({
   role,
   content,
+  messageId,
+  projectId,
   webSearchUsed,
+  documentsUsed,
   isStreaming,
 }: MessageBubbleProps) {
   const isUser = role === 'user'
+  const sourceDisplay = useMemo(
+    () => ({ webSearchUsed, documentsUsed }),
+    [webSearchUsed, documentsUsed],
+  )
+  const displayContent = useMemo(
+    () => (isUser ? content : prepareContentForDisplay(content, sourceDisplay)),
+    [content, isUser, sourceDisplay],
+  )
 
   return (
     <div className={`animate-fade-in flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -48,6 +64,14 @@ export const MessageBubble = memo(function MessageBubble({
             🌐 Web Search Used
           </span>
         )}
+        {!isUser && !isStreaming && messageId && projectId && (
+          <MessageActions
+            projectId={projectId}
+            messageId={messageId}
+            content={displayContent}
+            disabled={isStreaming}
+          />
+        )}
         <div
           className={`${
             isUser
@@ -61,18 +85,18 @@ export const MessageBubble = memo(function MessageBubble({
             <TypingIndicator />
           ) : isStreaming ? (
             <p className="text-[0.9375rem] leading-relaxed whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">
-              {content}
+              {displayContent}
               <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-violet-500 align-middle" />
             </p>
           ) : (
             <Suspense
               fallback={
                 <p className="text-[0.9375rem] leading-relaxed whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">
-                  {content}
+                  {displayContent}
                 </p>
               }
             >
-              <MarkdownContent content={content} />
+              <MarkdownContent content={content} sourceDisplay={sourceDisplay} />
             </Suspense>
           )}
         </div>

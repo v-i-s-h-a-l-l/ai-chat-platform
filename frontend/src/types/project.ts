@@ -32,10 +32,12 @@ export interface ChatMessage {
   content: string
   created_at: string
   web_search_used?: boolean
+  documents_used?: boolean
 }
 
 export interface ChatResponse {
   user_message: ChatMessage
   assistant_message: ChatMessage
   web_search_used: boolean
+  documents_used: boolean
 }

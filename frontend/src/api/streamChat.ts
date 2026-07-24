@@ -4,10 +4,22 @@ import type { ChatMessage } from '../types/project'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export interface StreamChatHandlers {
-  onMeta: (data: { user_message: ChatMessage; web_search_used: boolean }) => void
+  onMeta: (data: {
+    user_message: ChatMessage
+    web_search_used: boolean
+    documents_used: boolean
+  }) => void
   onToken: (content: string) => void
-  onDone: (data: { assistant_message: ChatMessage; web_search_used: boolean }) => void
-  onStopped?: (data: { assistant_message: ChatMessage; web_search_used: boolean }) => void
+  onDone: (data: {
+    assistant_message: ChatMessage
+    web_search_used: boolean
+    documents_used: boolean
+  }) => void
+  onStopped?: (data: {
+    assistant_message: ChatMessage
+    web_search_used: boolean
+    documents_used: boolean
+  }) => void
   onError: (detail: string) => void
 }
 

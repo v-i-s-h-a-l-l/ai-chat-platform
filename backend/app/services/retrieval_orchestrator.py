@@ -59,16 +59,3 @@ async def resolve_rag_context(
     except Exception:
         logger.exception("RAG retrieval failed — continuing without document context")
         return [], False
-
-
-def format_chunks_for_llm(chunks: list[RetrievedChunk]) -> str:
-    if not chunks:
-        return ""
-    sections: list[str] = []
-    for i, chunk in enumerate(chunks, start=1):
-        heading = f" — {chunk.section_heading}" if chunk.section_heading else ""
-        page = f", p.{chunk.page_number}" if chunk.page_number else ""
-        sections.append(
-            f"[{i}] {chunk.filename}{heading}{page}\n{chunk.content}"
-        )
-    return "\n\n".join(sections)

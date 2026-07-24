@@ -1,10 +1,18 @@
 import axios from 'axios'
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /** Skip the 401 → /auth/refresh retry (used for initial session bootstrap). */
+    skipAuthRefresh?: boolean
+  }
+}
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
+  timeout: 10_000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -43,6 +51,7 @@ api.interceptors.response.use(
       error.response?.status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
+      !originalRequest.skipAuthRefresh &&
       !originalRequest.url?.includes('/auth/login') &&
       !originalRequest.url?.includes('/auth/register') &&
       !originalRequest.url?.includes('/auth/refresh')
@@ -64,6 +73,9 @@ api.interceptors.response.use(
 export function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        return 'Upload timed out. The file may still be processing — check the document list in a moment.'
+      }
       if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
         return 'Cannot reach the server. Make sure the backend is running on port 8000 and PostgreSQL (Docker) is started.'
       }
@@ -71,6 +83,10 @@ export function getErrorMessage(error: unknown): string {
     }
     const detail = error.response?.data?.detail
     if (typeof detail === 'string') return detail
+    if (typeof detail === 'object' && detail !== null && 'message' in detail) {
+      const message = (detail as { message?: unknown }).message
+      if (typeof message === 'string') return message
+    }
     if (Array.isArray(detail)) return detail.map((d) => d.msg ?? d).join(', ')
     if (error.response.status >= 500) {
       return 'Server error. Check that PostgreSQL is running (Docker Desktop → docker compose up -d).'

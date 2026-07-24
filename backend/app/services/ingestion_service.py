@@ -102,10 +102,6 @@ class IngestionService:
                 db, document_id, DocumentStatus.READY.value, chunk_count=len(text_chunks)
             )
 
-            from app.services.rag_warmup import warmup_reranker
-
-            await warmup_reranker()
-
             total_ms = (time.perf_counter() - t_total) * 1000
             logger.info(
                 "Ingestion complete: %s — %d chunks in %.0fms (extract=%.0f chunk=%.0f embed=%.0f qdrant=%.0f)",

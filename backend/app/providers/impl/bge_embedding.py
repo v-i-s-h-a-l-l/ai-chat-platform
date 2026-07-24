@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import re
 import time
@@ -26,13 +27,18 @@ def _get_model():
 
 
 def _text_to_sparse(text: str) -> dict[int, float]:
-    """Lightweight sparse vector for hybrid retrieval (keyword sensitivity)."""
+    """Lightweight sparse vector for hybrid retrieval (keyword sensitivity).
+
+    Uses a stable MD5-based hash so vectors are consistent across workers
+    and process restarts (unlike Python's salted built-in hash()).
+    """
     tokens = re.findall(r"\w+", text.lower())
     if not tokens:
         return {}
     sparse: dict[int, float] = {}
     for token in tokens:
-        idx = hash(token) % 100_000
+        digest = hashlib.md5(token.encode("utf-8")).hexdigest()
+        idx = int(digest, 16) % 100_000
         sparse[idx] = sparse.get(idx, 0.0) + 1.0
     norm = sum(v * v for v in sparse.values()) ** 0.5 or 1.0
     return {k: v / norm for k, v in sparse.items()}
@@ -62,7 +68,7 @@ class BgeEmbeddingProvider(EmbeddingProvider):
 
         def _encode_batch() -> EmbeddingBatch:
             model = _get_model()
-            dense = model.encode(texts, normalize_embeddings=True, batch_size=32).tolist()
+            dense = model.encode(texts, normalize_embeddings=True, batch_size=64).tolist()
             sparse = [_text_to_sparse(t) for t in texts]
             return EmbeddingBatch(dense=dense, sparse=sparse)
 

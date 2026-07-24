@@ -1,0 +1,241 @@
+﻿=== ReportLab direct glyph tests ===
+Vera+ascii: 'Take Home ' square=False
+Vera+nbsp: 'Take Home ' square=False
+Vera+nbhyphen: 'Take\x00Home ' square=False
+Vera+bullet: 'ò item ' square=False
+Vera+checkbox: '\x00 task \x00 done ' square=False
+Helvetica+nbsp: 'Take Home ' square=False
+Vera+b+nbsp: 'Take Home ' square=False
+Vera+b+nbhyphen: 'Take\x00Home ' square=False
+
+=== Normalized vs raw in Vera ===
+raw render:  'Markdown to PDF '
+norm render: 'Markdown to PDF '
+
+=== Full pipeline trace (NBSP sample) ===
+Export Pipeline Unicode Trace
+========================================
+
+[1_raw_markdown]
+sample: MarkdownátoáPDF\n\nVSáCode\n\nTakeáHome
+suspicious characters:
+  '\xa0' U+00A0 Zs  NO-BREAK SPACE
+  '\xa0' U+00A0 Zs  NO-BREAK SPACE
+  '\xa0' U+00A0 Zs  NO-BREAK SPACE
+  '\xa0' U+00A0 Zs  NO-BREAK SPACE
+
+[2_repaired_markdown]
+sample: Markdown to PDF\n\nVS Code\n\nTake Home
+suspicious characters:
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+
+[2b_unicode_normalized_raw]
+sample: Markdown to PDF\n\nVS Code\n\nTake Home
+suspicious characters:
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+
+[3_prepared_markdown]
+sample: Markdown to PDF\n\nVS Code\n\nTake Home
+suspicious characters:
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+
+[4_parsed_ast_text]
+sample: Markdown to PDF VS Code Take Home
+suspicious characters:
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+
+[5_html]
+sample: \n\n\n@page {\n  size: letter;\n  margin: 0.85in 0.85in 0.9in 0.85in;\n}\n\nbody {\n  font-family: "Vera", "Helvetica", sans-serif;\n  font-size: 11pt;\n  line-height: 1.55;\n  color: #1a1a1a;\n}\n\n.doc-title {\n  font-size: 22pt;\n  font-weight: 700;\n  ma
+suspicious characters:
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+python : Traceback (most recent call last):
+At C:\Users\visha\AppData\Local\Temp\ps-script-a56587c0-3e74-4adf-a975-13904eb311e9.ps1:108 char:24
++ ... :\chatbot\backend; python scripts/diagnose_pdf_glyphs.py 2>&1 | Out-F ...
++                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\chatbot\backend\scripts\diagnose_pdf_glyphs.py", line 69, in <module>
+    main()
+    ~~~~^^
+  File "C:\chatbot\backend\scripts\diagnose_pdf_glyphs.py", line 65, in main
+    print(format_trace_report(trace_export_pipeline(sample2, title="diag2")))
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\visha\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2011' in position 105: character maps to <undefined>
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+
+[6_pdf_binary_length]
+sample: 63357
+suspicious characters: none
+
+[7_pdf_extracted_text]
+sample: Page 1\ndiag\nDate:\nJuly 23, 2026 at 05:48 PM\nProject:\nDebug\nGenerated\nBy:\nAI Platform\nMarkdown to PDF\nVS Code\nTake Home\nGenerated using AI Assistant\n
+suspicious characters:
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+  ' '    U+0020 Zs  SPACE
+
+[7b_pdf_has_black_square]
+sample: Page 1
+diag
+Date:
+July 23, 2026 at 05:48 PM
+Project:
+Debug
+Generated
+By:
+AI Platform
+Markdown to PDF
+VS Code
+Take Home
+Generated using AI Assistant
+
+suspicious characters: none
+
+=== Full pipeline trace (NBHYPHEN sample, skip repair?) ===

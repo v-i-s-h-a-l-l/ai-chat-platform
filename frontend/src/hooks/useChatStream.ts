@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getErrorMessage } from '../api/client'
+import { detectExportIntent, downloadExport } from '../api/export'
 import { projectApi } from '../api/projects'
 import type { ChatMessage, Project } from '../types/project'
 
@@ -113,6 +114,20 @@ export function useChatStream(projectId: string | undefined): UseChatStreamResul
     async (message: string) => {
       if (!projectId || sending) return
 
+      const exportFormat = detectExportIntent(message)
+      if (exportFormat) {
+        const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant' && m.content.trim())
+        if (lastAssistant && !lastAssistant.id.startsWith('stream-')) {
+          setError('')
+          try {
+            await downloadExport(projectId, lastAssistant.id, exportFormat)
+          } catch (err) {
+            setError(getErrorMessage(err))
+          }
+          return
+        }
+      }
+
       const streamMsgId = `stream-${Date.now()}`
       metaReceivedRef.current = false
       const optimisticUser: ChatMessage = {
@@ -142,7 +157,7 @@ export function useChatStream(projectId: string | undefined): UseChatStreamResul
           projectId,
           message,
           {
-            onMeta: ({ user_message, web_search_used }) => {
+            onMeta: ({ user_message, web_search_used, documents_used }) => {
               metaReceivedRef.current = true
               setMessages((prev) => {
                 const assistantContent = prev.find((m) => m.id === streamMsgId)?.content ?? ''
@@ -155,6 +170,7 @@ export function useChatStream(projectId: string | undefined): UseChatStreamResul
                     content: assistantContent,
                     created_at: new Date().toISOString(),
                     web_search_used,
+                    documents_used,
                   },
                 ]
               })
@@ -162,28 +178,38 @@ export function useChatStream(projectId: string | undefined): UseChatStreamResul
             onToken: (token) => {
               appendStreamToken(streamMsgId, token)
             },
-            onDone: ({ assistant_message, web_search_used }) => {
+            onDone: ({ assistant_message, web_search_used, documents_used }) => {
               const pending = flushPendingTokens()
               setMessages((prev) =>
                 prev.map((m) => {
                   if (m.id !== streamMsgId) return m
                   if (pending) {
-                    return { ...assistant_message, content: m.content + pending, web_search_used }
+                    return {
+                      ...assistant_message,
+                      content: m.content + pending,
+                      web_search_used,
+                      documents_used,
+                    }
                   }
-                  return { ...assistant_message, web_search_used }
+                  return { ...assistant_message, web_search_used, documents_used }
                 }),
               )
               setStreamingId(null)
             },
-            onStopped: ({ assistant_message, web_search_used }) => {
+            onStopped: ({ assistant_message, web_search_used, documents_used }) => {
               const pending = flushPendingTokens()
               setMessages((prev) =>
                 prev.map((m) => {
                   if (m.id !== streamMsgId) return m
                   if (pending) {
-                    return { ...assistant_message, content: m.content + pending, web_search_used }
+                    return {
+                      ...assistant_message,
+                      content: m.content + pending,
+                      web_search_used,
+                      documents_used,
+                    }
                   }
-                  return { ...assistant_message, web_search_used }
+                  return { ...assistant_message, web_search_used, documents_used }
                 }),
               )
               setStreamingId(null)
@@ -219,7 +245,7 @@ export function useChatStream(projectId: string | undefined): UseChatStreamResul
         setSending(false)
       }
     },
-    [projectId, sending],
+    [projectId, sending, messages],
   )
 
   return { project, messages, loading, sending, streamingId, error, sendMessage, stopGeneration }

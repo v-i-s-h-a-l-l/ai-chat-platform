@@ -6,6 +6,7 @@ slightly differently in routes, services, and the SSE layer.
 
 from app.models.chat_message import ChatMessage
 from app.models.project import Project
+from app.read_models.message_read import MessageReadModel
 from app.schemas.chat import ChatMessageResponse
 from app.schemas.project import ProjectResponse
 
@@ -20,7 +21,7 @@ def serialize_project(project: Project) -> ProjectResponse:
     )
 
 
-def serialize_message(message: ChatMessage) -> ChatMessageResponse:
+def serialize_message(message: ChatMessage | MessageReadModel) -> ChatMessageResponse:
     return ChatMessageResponse(
         id=message.id,
         role=message.role,

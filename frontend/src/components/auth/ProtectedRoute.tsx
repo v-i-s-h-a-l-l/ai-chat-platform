@@ -21,8 +21,8 @@ export function ProtectedRoute() {
 export function PublicRoute() {
   const { user, loading } = useAuth()
 
-  if (loading) return <AuthLoading />
-  if (user) return <Navigate to="/home" replace />
+  // Render login/register immediately — don't block public pages on session check.
+  if (!loading && user) return <Navigate to="/home" replace />
 
   return <Outlet />
 }

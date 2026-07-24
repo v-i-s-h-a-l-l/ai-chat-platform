@@ -26,6 +26,6 @@ export const authApi = {
 
 export const userApi = {
   getMe(): Promise<User> {
-    return api.get<User>('/users/me').then((res) => res.data)
+    return api.get<User>('/users/me', { skipAuthRefresh: true }).then((res) => res.data)
   },
 }

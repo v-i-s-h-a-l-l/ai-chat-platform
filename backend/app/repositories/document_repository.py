@@ -1,7 +1,9 @@
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.models.document import Document
 from app.providers.types import DocumentStatus
 
@@ -74,6 +76,29 @@ class DocumentRepository:
         doc.retry_count += 1
         db.commit()
         return doc.retry_count
+
+    @staticmethod
+    def touch(db: Session, document_id: UUID) -> None:
+        doc = db.query(Document).filter(Document.id == document_id).first()
+        if doc is None:
+            return
+        doc.updated_at = datetime.now(timezone.utc)
+        db.commit()
+
+    @staticmethod
+    def list_stale_processing(
+        db: Session, project_id: UUID, *, older_than_minutes: int
+    ) -> list[Document]:
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=older_than_minutes)
+        return (
+            db.query(Document)
+            .filter(
+                Document.project_id == project_id,
+                Document.status == DocumentStatus.PROCESSING.value,
+                Document.updated_at <= cutoff,
+            )
+            .all()
+        )
 
     @staticmethod
     def delete(db: Session, document: Document) -> None:

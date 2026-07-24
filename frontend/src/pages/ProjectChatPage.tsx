@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { ChatWindow } from '../components/chat/ChatWindow'
+import { UploadConfirmationModal } from '../components/chat/UploadConfirmationModal'
 import { ArrowLeftIcon, SparklesIcon } from '../components/icons/NavIcons'
 import { useChatStream } from '../hooks/useChatStream'
 import { useProjectDocuments } from '../hooks/useProjectDocuments'
@@ -14,7 +15,10 @@ export function ProjectChatPage() {
     deletingId: deletingDocumentId,
     error: documentsError,
     setError: setDocumentsError,
+    pendingUpload,
     uploadFiles,
+    confirmPendingUpload,
+    cancelPendingUpload,
     deleteDocument,
   } = useProjectDocuments(id)
 
@@ -90,6 +94,7 @@ export function ProjectChatPage() {
       <div className="flex-1 overflow-hidden">
         <ChatWindow
           messages={messages}
+          projectId={project.id}
           onSend={sendMessage}
           onStop={stopGeneration}
           loading={sending}
@@ -102,6 +107,16 @@ export function ProjectChatPage() {
           onDocumentDelete={deleteDocument}
         />
       </div>
+
+      {pendingUpload && (
+        <UploadConfirmationModal
+          detail={pendingUpload.detail}
+          filename={pendingUpload.file.name}
+          uploading={documentsUploading}
+          onContinue={() => void confirmPendingUpload()}
+          onCancel={cancelPendingUpload}
+        />
+      )}
     </div>
   )
 }

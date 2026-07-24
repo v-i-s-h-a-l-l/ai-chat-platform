@@ -4,30 +4,47 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.config import settings
-import app.guardrails as guardrails
 from app.models.document import Document
 from app.providers.impl.qdrant_store import get_vector_store
 from app.providers.types import DocumentStatus
 from app.repositories.document_chunk_repository import DocumentChunkRepository
 from app.repositories.document_repository import DocumentRepository
-from app.services.ingestion_service import IngestionService
+from app.services.ingestion_errors import IngestionQueueUnavailableError
+from app.services.ingestion_queue import enqueue_document_ingestion
 from app.services.project_service import ProjectService
 from app.utils.file_storage import FileStorage
+from app.utils.mime_validation import ALLOWED_MIMES
 
 logger = logging.getLogger(__name__)
-
-ALLOWED_MIMES = {
-    "application/pdf",
-    "text/plain",
-    "text/markdown",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-}
 
 
 class DocumentService:
     @staticmethod
-    def list_documents(db: Session, project_id: UUID, user_id: UUID) -> list[Document]:
+    async def _recover_stale_processing(db: Session, project_id: UUID) -> None:
+        stale = DocumentRepository.list_stale_processing(
+            db, project_id, older_than_minutes=settings.ingestion_stale_minutes
+        )
+        if not stale:
+            return
+
+        for doc in stale:
+            logger.warning(
+                "Re-queuing stale processing document: %s (%s)",
+                doc.filename,
+                doc.id,
+            )
+            DocumentRepository.touch(db, doc.id)
+            try:
+                await enqueue_document_ingestion(doc.id)
+            except IngestionQueueUnavailableError:
+                logger.error("Cannot re-queue stale document %s — queue unavailable", doc.id)
+
+    @staticmethod
+    async def list_documents_with_recovery(
+        db: Session, project_id: UUID, user_id: UUID
+    ) -> list[Document]:
         ProjectService.get_project(db, project_id, user_id)
+        await DocumentService._recover_stale_processing(db, project_id)
         return DocumentRepository.list_by_project(db, project_id)
 
     @staticmethod
@@ -38,6 +55,8 @@ class DocumentService:
         filename: str,
         mime_type: str,
         data: bytes,
+        *,
+        confirmed: bool = False,
     ) -> Document:
         ProjectService.get_project(db, project_id, user_id)
 
@@ -48,16 +67,22 @@ class DocumentService:
         if len(data) > max_bytes:
             raise ValueError(f"File exceeds maximum size of {settings.rag_max_upload_mb} MB")
 
-        # Guardrails: check for PII in upload
         if settings.guardrails_enabled:
-            guardrails.check_document(filename, data)
+            from app.services.upload_validation import UploadDecisionService
+
+            await UploadDecisionService().evaluate_and_enforce(
+                filename,
+                mime_type,
+                data,
+                confirmed=confirmed,
+            )
 
         storage = FileStorage()
         doc = DocumentRepository.create(
             db,
             project_id=project_id,
             filename=filename,
-            storage_path="",  # placeholder
+            storage_path="",
             mime_type=mime_type,
             file_size=len(data),
         )
@@ -67,9 +92,20 @@ class DocumentService:
         db.commit()
         db.refresh(doc)
 
-        await IngestionService().ingest(doc.id)
+        try:
+            await enqueue_document_ingestion(doc.id)
+        except IngestionQueueUnavailableError:
+            DocumentRepository.update_status(
+                db,
+                doc.id,
+                DocumentStatus.FAILED.value,
+                error_message="Ingestion queue unavailable — start Redis and the worker, then reprocess",
+            )
+            db.refresh(doc)
+            raise
+
         db.refresh(doc)
-        logger.info("Document uploaded and ingested: %s (status=%s)", doc.id, doc.status)
+        logger.info("Document uploaded, ingestion queued: %s (status=%s)", doc.id, doc.status)
         return doc
 
     @staticmethod
@@ -98,6 +134,6 @@ class DocumentService:
         if doc.status == DocumentStatus.READY.value:
             return doc
 
-        await IngestionService().ingest(document_id)
+        await enqueue_document_ingestion(document_id)
         db.refresh(doc)
         return doc

@@ -8,6 +8,7 @@ import { MessageBubble } from './MessageBubble'
 
 interface ChatWindowProps {
   messages: ChatMessage[]
+  projectId?: string
   onSend: (message: string) => Promise<void>
   onStop?: () => void
   loading: boolean
@@ -22,6 +23,7 @@ interface ChatWindowProps {
 
 export function ChatWindow({
   messages,
+  projectId,
   onSend,
   onStop,
   loading,
@@ -93,7 +95,10 @@ export function ChatWindow({
                 key={msg.id}
                 role={msg.role as 'user' | 'assistant'}
                 content={msg.content}
+                messageId={msg.id}
+                projectId={projectId}
                 webSearchUsed={msg.web_search_used}
+                documentsUsed={msg.documents_used}
                 isStreaming={msg.id === streamingId}
               />
             ))}

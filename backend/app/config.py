@@ -1,3 +1,4 @@
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +19,19 @@ class Settings(BaseSettings):
     groq_fast_model: str = "llama-3.1-8b-instant"
     groq_prompt_optimization_model: str = "openai/gpt-oss-20b"
     tavily_api_key: str = ""
+
+    # Database pool
+    db_pool_size: int = 20
+    db_max_overflow: int = 30
+    db_pool_recycle: int = 3600
+
+    # Rate limiting
+    rate_limit_enabled: bool = True
+    rate_limit_use_redis: bool = False
+    rate_limit_auth: str = "10/minute"
+    rate_limit_chat: str = "30/minute"
+    rate_limit_upload: str = "20/minute"
+    rate_limit_optimize: str = "10/minute"
 
     # Prompt optimization (project creation)
     prompt_opt_enabled: bool = True
@@ -43,23 +57,63 @@ class Settings(BaseSettings):
     rag_mmr_lambda: float = 0.5
     rag_max_upload_mb: int = 25
     ingestion_max_retries: int = 3
+    ingestion_stale_minutes: int = 4
+    # When False (default), Redis/Arq enqueue failure raises — never run embed in API process.
+    # Set True only for local demos without a worker.
+    ingestion_inline_fallback: bool = False
+
+    # Observability
+    metrics_enabled: bool = True
+    otel_enabled: bool = True
+    otel_service_name: str = "chatbot-api"
+    otel_exporter_otlp_endpoint: str = ""
+    otel_console_export: bool = False
 
     # Guardrails
     guardrails_enabled: bool = True
+    upload_validation_gpt_enabled: bool = True
+
+    # Response routing (post-retrieval source selection)
+    response_routing_enabled: bool = True
 
     @property
     def cors_origins_list(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
 
+    @field_validator("cookie_samesite")
+    @classmethod
+    def validate_samesite(cls, value: str) -> str:
+        normalized = value.lower()
+        if normalized not in {"lax", "strict", "none"}:
+            raise ValueError("COOKIE_SAMESITE must be one of: lax, strict, none")
+        return normalized
+
+    @model_validator(mode="after")
+    def enforce_production_security(self) -> "Settings":
+        if not self.is_production:
+            return self
+
+        if self.secret_key == "change-me-in-production":
+            raise ValueError(
+                "SECRET_KEY is still set to the insecure default. "
+                "Set a strong SECRET_KEY before running in production."
+            )
+        if not self.cookie_secure:
+            raise ValueError("COOKIE_SECURE must be true in production")
+        if self.cookie_samesite == "none" and not self.cookie_secure:
+            raise ValueError("COOKIE_SAMESITE=none requires COOKIE_SECURE=true")
+        if not self.groq_api_key.strip():
+            raise ValueError("GROQ_API_KEY is required in production")
+        if self.ingestion_inline_fallback:
+            raise ValueError(
+                "INGESTION_INLINE_FALLBACK must be false in production "
+                "(heavy embedding must not run in the API process)"
+            )
+        return self
+
 
 settings = Settings()
-
-if settings.is_production and settings.secret_key == "change-me-in-production":
-    raise RuntimeError(
-        "SECRET_KEY is still set to the insecure default. "
-        "Set a strong SECRET_KEY in the environment before running in production."
-    )

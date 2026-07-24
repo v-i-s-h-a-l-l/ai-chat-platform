@@ -18,7 +18,7 @@ _client: AsyncQdrantClient | None = None
 def _get_client() -> AsyncQdrantClient:
     global _client
     if _client is None:
-        _client = AsyncQdrantClient(url=settings.qdrant_url)
+        _client = AsyncQdrantClient(url=settings.qdrant_url, check_compatibility=False)
     return _client
 
 
@@ -34,24 +34,38 @@ class QdrantVectorStore(VectorStore):
         client = _get_client()
         collections = await client.get_collections()
         names = {c.name for c in collections.collections}
-        if settings.qdrant_collection in names:
-            return
+        if settings.qdrant_collection not in names:
+            await client.create_collection(
+                collection_name=settings.qdrant_collection,
+                vectors_config={
+                    "dense": qmodels.VectorParams(
+                        size=settings.embedding_dimension,
+                        distance=qmodels.Distance.COSINE,
+                    ),
+                },
+                sparse_vectors_config={
+                    "sparse": qmodels.SparseVectorParams(
+                        index=qmodels.SparseIndexParams(on_disk=False),
+                    ),
+                },
+            )
+            logger.info("Created Qdrant collection: %s", settings.qdrant_collection)
 
-        await client.create_collection(
-            collection_name=settings.qdrant_collection,
-            vectors_config={
-                "dense": qmodels.VectorParams(
-                    size=settings.embedding_dimension,
-                    distance=qmodels.Distance.COSINE,
-                ),
-            },
-            sparse_vectors_config={
-                "sparse": qmodels.SparseVectorParams(
-                    index=qmodels.SparseIndexParams(on_disk=False),
-                ),
-            },
-        )
-        logger.info("Created Qdrant collection: %s", settings.qdrant_collection)
+        await self._ensure_payload_indexes()
+
+    async def _ensure_payload_indexes(self) -> None:
+        """Create keyword indexes for project/document filters (idempotent)."""
+        client = _get_client()
+        for field_name in ("project_id", "document_id"):
+            try:
+                await client.create_payload_index(
+                    collection_name=settings.qdrant_collection,
+                    field_name=field_name,
+                    field_schema=qmodels.PayloadSchemaType.KEYWORD,
+                )
+            except Exception as exc:
+                # Index already exists or Qdrant version quirk — safe to ignore.
+                logger.debug("Payload index %s: %s", field_name, exc)
 
     async def upsert(self, chunks: list[ChunkPayload]) -> None:
         if not chunks:
