@@ -32,6 +32,15 @@ class Settings(BaseSettings):
     rate_limit_chat: str = "30/minute"
     rate_limit_upload: str = "20/minute"
     rate_limit_optimize: str = "10/minute"
+    rate_limit_speech: str = "10/minute"
+
+    # Speech-to-text (Sarvam — voice input only, isolated from chat)
+    sarvam_api_key: str = ""
+    sarvam_stt_model: str = "saarika:v2"
+    sarvam_stt_language_code: str = "unknown"
+    speech_max_upload_mb: int = 10
+    sarvam_stt_connect_timeout: float = 3.0
+    sarvam_stt_read_timeout: float = 30.0
 
     # Prompt optimization (project creation)
     prompt_opt_enabled: bool = True

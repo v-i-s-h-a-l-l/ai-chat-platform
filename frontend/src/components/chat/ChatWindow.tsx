@@ -1,6 +1,7 @@
 import {
   FormEvent,
   KeyboardEvent,
+  useCallback,
   useRef,
   useState,
   type ChangeEvent,
@@ -30,6 +31,8 @@ import {
 } from "./DocumentUpload";
 
 import { MessageBubble } from "./MessageBubble";
+
+import { VoiceInputLazy } from "./VoiceInputLazy";
 
 import { ScrollToBottomButton } from "./ScrollToBottomButton";
 
@@ -130,19 +133,34 @@ export function ChatWindow({
       streamingId: streamingId ?? null,
     });
 
+  const submitMessage = useCallback(
+    async (message: string) => {
+      const trimmed = message.trim();
+      if (!trimmed || loading) return;
+
+      setInput("");
+
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+      await onSend(trimmed);
+    },
+    [loading, onSend],
+  );
+
   async function handleSubmit(e?: FormEvent) {
     e?.preventDefault();
-
-    const trimmed = input.trim();
-
-    if (!trimmed || loading) return;
-
-    setInput("");
-
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
-
-    await onSend(trimmed);
+    await submitMessage(input);
   }
+
+  const handleVoiceTranscript = useCallback(
+    async (transcript: string) => {
+      const trimmed = transcript.trim();
+      if (!trimmed || loading) return;
+      setInput(trimmed);
+      await submitMessage(trimmed);
+    },
+    [loading, submitMessage],
+  );
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -305,6 +323,11 @@ export function ChatWindow({
             {uploadEnabled && openPicker && (
               <DocumentAttachButton onClick={openPicker} disabled={loading} />
             )}
+
+            <VoiceInputLazy
+              disabled={loading}
+              onTranscript={handleVoiceTranscript}
+            />
 
             <textarea
               ref={textareaRef}

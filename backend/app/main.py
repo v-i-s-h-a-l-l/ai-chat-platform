@@ -16,7 +16,7 @@ from app.database import check_database
 import app.models  # noqa: F401 — register all ORM models with SQLAlchemy
 from app.observability import metrics, setup_tracing
 from app.providers.impl.qdrant_store import get_vector_store
-from app.routes import auth, documents, exports, models, projects, users
+from app.routes import auth, documents, exports, models, projects, speech, users
 from app.services.rag_warmup import warmup_rag_models
 from app.utils.http_client import close_async_http_client, get_async_http_client
 from app.utils.exception_handlers import register_exception_handlers
@@ -105,6 +105,7 @@ app.include_router(models.router)
 app.include_router(projects.router)
 app.include_router(exports.router)
 app.include_router(documents.router)
+app.include_router(speech.router)
 
 
 @app.on_event("startup")
