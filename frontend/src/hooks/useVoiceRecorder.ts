@@ -6,6 +6,13 @@ export type VoiceRecorderState = 'idle' | 'listening' | 'processing' | 'complete
 
 const MAX_RECORDING_MS = 30_000
 
+function filenameForMime(mimeType: string | undefined): string {
+  if (!mimeType) return 'recording.webm'
+  if (mimeType.includes('ogg')) return 'recording.ogg'
+  if (mimeType.includes('mp4')) return 'recording.mp4'
+  return 'recording.webm'
+}
+
 function pickRecorderMimeType(): string | undefined {
   const candidates = [
     'audio/webm;codecs=opus',
@@ -74,6 +81,9 @@ export function useVoiceRecorder({
   const stopRecording = useCallback(async () => {
     const recorder = mediaRecorderRef.current
     if (!recorder || recorder.state === 'inactive') return
+    if (recorder.state === 'recording') {
+      recorder.requestData()
+    }
     recorder.stop()
   }, [])
 
@@ -143,7 +153,8 @@ export function useVoiceRecorder({
 
           setState('processing')
           try {
-            const { text } = await speechApi.transcribe(blob)
+            const filename = filenameForMime(blob.type)
+            const { text } = await speechApi.transcribe(blob, filename)
             setState('completed')
             await onTranscript(text)
             resetToIdle()
@@ -156,7 +167,7 @@ export function useVoiceRecorder({
         })()
       }
 
-      recorder.start()
+      recorder.start(250)
       setState('listening')
 
       timerRef.current = window.setInterval(() => {
