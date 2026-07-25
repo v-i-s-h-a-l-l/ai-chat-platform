@@ -64,8 +64,6 @@ services:
         value: /app/storage/documents
       - key: INGESTION_MAX_JOBS
         value: "2"
-      - key: SARVAM_API_KEY
-        sync: false
 
   - type: redis
     name: yellobot-redis
