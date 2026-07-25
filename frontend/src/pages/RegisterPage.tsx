@@ -6,6 +6,7 @@ import { AuthCard } from '../components/auth/AuthCard'
 import { Navbar } from '../components/layout/Navbar'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
+import { useApiPrewarm } from '../hooks/useApiPrewarm'
 import { validatePassword, PASSWORD_REQUIREMENTS } from '../utils/passwordValidation'
 
 interface FormErrors {
@@ -16,6 +17,7 @@ interface FormErrors {
 }
 
 export function RegisterPage() {
+  useApiPrewarm()
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')

@@ -2,8 +2,11 @@ import { Link } from 'react-router-dom'
 import { YelloBotLogo } from '../components/brand/YelloBotLogo'
 import { Navbar } from '../components/layout/Navbar'
 import { Button } from '../components/ui/Button'
+import { useApiPrewarm } from '../hooks/useApiPrewarm'
 
 export function LandingPage() {
+  useApiPrewarm()
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-amber-50/40 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
       <Navbar />
