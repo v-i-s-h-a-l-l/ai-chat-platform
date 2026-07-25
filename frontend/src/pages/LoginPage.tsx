@@ -7,8 +7,10 @@ import { Navbar } from '../components/layout/Navbar'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { useAuth } from '../contexts/AuthContext'
+import { useApiPrewarm } from '../hooks/useApiPrewarm'
 
 export function LoginPage() {
+  useApiPrewarm()
   const navigate = useNavigate()
   const { refreshSession } = useAuth()
   const [email, setEmail] = useState('')
