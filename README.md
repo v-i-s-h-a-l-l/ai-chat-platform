@@ -11,9 +11,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-Proprietary-lightgrey)](#license)
 [![Tests](https://img.shields.io/badge/tests-185%2B%20passing-brightgreen)](#contributing)
-[![Live](https://img.shields.io/website?url=https%3A%2F%2Fyellobot.online&label=yellobot.online)](https://yellobot.online)
+[![Live](https://img.shields.io/website?url=https%3A%2F%2Fwww.yellobot.online%2F&label=yellobot.online)](https://www.yellobot.online/)
 
-**Live demo:** [yellobot.online](https://yellobot.online) · **Repository:** [github.com/v-i-s-h-a-l-l/ai-chat-platform](https://github.com/v-i-s-h-a-l-l/ai-chat-platform)
+**Live demo:** [www.yellobot.online](https://www.yellobot.online/) · **Repository:** [github.com/v-i-s-h-a-l-l/ai-chat-platform](https://github.com/v-i-s-h-a-l-l/ai-chat-platform)
 
 </div>
 
@@ -21,7 +21,7 @@
 
 ## Why YelloBot?
 
-- 🚀 **Production-ready AI chat platform** — deployed and live at [yellobot.online](https://yellobot.online), not a local demo
+- 🚀 **Production-ready AI chat platform** — deployed and live at [www.yellobot.online](https://www.yellobot.online/), not a local demo
 - 📚 **Persistent document-aware assistants** — each project keeps its own system prompt, chat history, and indexed corpus
 - 🔍 **Hybrid RAG with streaming responses** — dense + sparse retrieval, MMR, reranking, tokens streamed over SSE
 - 🏗️ **Built on modern backend architecture** — async FastAPI, layered services, background workers, typed everywhere
@@ -146,7 +146,7 @@ Deployment topology is covered in detail in [Deployment](#deployment) below.
 
 ## Demo
 
-Try the live deployment at **[yellobot.online](https://yellobot.online)** — register, create a project, upload a PDF, and ask questions grounded in your document.
+Try the live deployment at **[www.yellobot.online](https://www.yellobot.online/)** — register, create a project, upload a PDF, and ask questions grounded in your document.
 
 ---
 
