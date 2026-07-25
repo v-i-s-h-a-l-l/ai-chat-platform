@@ -10,7 +10,6 @@ export const speechApi = {
     form.append('file', blob, filename)
     return api
       .post<TranscribeResponse>('/speech/transcribe', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 35_000,
       })
       .then((res) => res.data)

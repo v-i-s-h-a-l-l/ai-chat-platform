@@ -36,8 +36,9 @@ class Settings(BaseSettings):
 
     # Speech-to-text (Sarvam — voice input only, isolated from chat)
     sarvam_api_key: str = ""
-    sarvam_stt_model: str = "saarika:v2"
-    sarvam_stt_language_code: str = "unknown"
+    sarvam_stt_model: str = "saaras:v3"
+    sarvam_stt_mode: str = "transcribe"
+    sarvam_stt_language_code: str = ""
     speech_max_upload_mb: int = 10
     sarvam_stt_connect_timeout: float = 3.0
     sarvam_stt_read_timeout: float = 30.0
