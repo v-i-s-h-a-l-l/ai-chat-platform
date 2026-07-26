@@ -9,10 +9,12 @@ declare module 'axios' {
   }
 }
 
+const DEFAULT_TIMEOUT_MS = 60_000
+
 export const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
-  timeout: 10_000,
+  timeout: DEFAULT_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
     ...CSRF_HEADERS,
@@ -71,11 +73,22 @@ api.interceptors.response.use(
   },
 )
 
+function getTimeoutMessage(config?: axios.InternalAxiosRequestConfig): string {
+  const url = config?.url ?? ''
+  if (url.includes('/documents')) {
+    return 'Upload timed out. The file may still be processing — check the document list in a moment.'
+  }
+  if (url.includes('/auth/') || url.includes('/users/me')) {
+    return 'The server is taking longer than usual to respond. Please wait a moment and try again.'
+  }
+  return 'Request timed out. Please try again in a moment.'
+}
+
 export function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
       if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-        return 'Upload timed out. The file may still be processing — check the document list in a moment.'
+        return getTimeoutMessage(error.config)
       }
       if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
         return 'Cannot reach the server. Make sure the backend is running on port 8000 and PostgreSQL (Docker) is started.'

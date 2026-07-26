@@ -31,6 +31,14 @@ describe('getErrorMessage', () => {
     })
     expect(getErrorMessage(error)).toContain('Server error')
   })
+
+  it('returns auth-specific guidance for login timeouts', () => {
+    const error = new axios.AxiosError('timeout of 60000ms exceeded', 'ECONNABORTED', {
+      headers: new axios.AxiosHeaders(),
+      url: '/auth/login',
+    } as axios.InternalAxiosRequestConfig)
+    expect(getErrorMessage(error)).toContain('server is taking longer than usual')
+  })
 })
 
 describe('api config', () => {
