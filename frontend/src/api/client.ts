@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type InternalAxiosRequestConfig } from 'axios'
 
 import { API_URL, CSRF_HEADERS } from '../config/api'
 
@@ -73,7 +73,7 @@ api.interceptors.response.use(
   },
 )
 
-function getTimeoutMessage(config?: axios.InternalAxiosRequestConfig): string {
+function getTimeoutMessage(config?: InternalAxiosRequestConfig): string {
   const url = config?.url ?? ''
   if (url.includes('/documents')) {
     return 'Upload timed out. The file may still be processing — check the document list in a moment.'

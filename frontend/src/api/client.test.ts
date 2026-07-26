@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type InternalAxiosRequestConfig } from 'axios'
 import { describe, expect, it } from 'vitest'
 
 import { getErrorMessage } from '../api/client'
@@ -36,7 +36,7 @@ describe('getErrorMessage', () => {
     const error = new axios.AxiosError('timeout of 60000ms exceeded', 'ECONNABORTED', {
       headers: new axios.AxiosHeaders(),
       url: '/auth/login',
-    } as axios.InternalAxiosRequestConfig)
+    } as InternalAxiosRequestConfig)
     expect(getErrorMessage(error)).toContain('server is taking longer than usual')
   })
 })
