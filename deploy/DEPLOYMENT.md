@@ -182,6 +182,24 @@ If upload stays on "Processing" forever:
 
 ---
 
+## Part 4b — UptimeRobot (keep API warm + alerts)
+
+**Do this once** so reviewers and users get fast login and you are emailed if the API goes down.
+
+Full steps: **[UPTIMEROBOT.md](UPTIMEROBOT.md)**
+
+Quick version:
+
+1. Sign up at [uptimerobot.com](https://uptimerobot.com) (free).
+2. **Add New Monitor** → HTTP(s).
+3. URL: `https://YOUR-RENDER-URL.onrender.com/health` (e.g. `https://ai-chat-platform-irvb.onrender.com/health`).
+4. Interval: **5 minutes** · Timeout: **60 seconds** · Alert: your email.
+5. Wait until status shows **Up**.
+
+This replaces the old GitHub Actions keep-alive job (removed from the repo).
+
+---
+
 ## Part 5 — Optional: custom domains
 
 | Service | Where |
@@ -279,6 +297,7 @@ Or in Render Dashboard: Root Directory = `backend`, Dockerfile Path = `Dockerfil
 | [backend/scripts/start_production.sh](../backend/scripts/start_production.sh) | Migrations + worker + uvicorn |
 | [frontend/vercel.json](../frontend/vercel.json) | SPA routing on Vercel |
 | [deploy/env.production.example](env.production.example) | All production env vars |
+| [deploy/UPTIMEROBOT.md](UPTIMEROBOT.md) | Keep Render API warm (5 min health pings) |
 
 Local development is unchanged — still use `docker compose`, `uvicorn`, and `arq` separately.
 

@@ -62,6 +62,18 @@ Required on frontend project:
 
 After changing `VITE_*` variables, **redeploy** — values are baked in at build time.
 
+## UptimeRobot (keep API warm)
+
+Required for production so register/login stay fast and you get alerts if the API fails:
+
+1. Follow **[UPTIMEROBOT.md](UPTIMEROBOT.md)** — free account, 5-minute HTTP monitor on `/health`.
+2. Confirm monitor status is **Up** in UptimeRobot dashboard.
+3. Enable email alerts on the monitor.
+
+Production URL (update if your Render hostname differs):
+
+`https://ai-chat-platform-irvb.onrender.com/health`
+
 ## Preview branch smoke test (before merging to main)
 
 On the Vercel Preview URL:

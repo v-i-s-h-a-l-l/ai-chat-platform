@@ -605,6 +605,7 @@ flowchart LR
 3. Deploy frontend on Vercel with `VITE_API_URL` pointing to Render
 4. Update `CORS_ORIGINS` to your Vercel/custom domain
 5. Verify: register → upload PDF → ask a document question
+6. **Set up [UptimeRobot](UPTIMEROBOT.md)** — ping `/health` every 5 minutes (keeps login fast)
 
 Detailed guide: **[deploy/DEPLOYMENT.md](deploy/DEPLOYMENT.md)**
 
